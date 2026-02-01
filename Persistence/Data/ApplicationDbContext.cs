@@ -6,10 +6,21 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Domain.Entity.Identity;
+using Microsoft.AspNetCore.Identity;
 
 namespace Persistence.Data
 {
-    public class ApplicationDbContext : IdentityDbContext
+    public class ApplicationDbContext : IdentityDbContext<
+        User,
+        Role,
+        string,
+        IdentityUserClaim<string>,
+        UserRole,
+        IdentityUserLogin<string>,
+        IdentityRoleClaim<string>,
+        IdentityUserToken<string>
+    >
     {
         public ApplicationDbContext(DbContextOptions options) : base(options)
         {
