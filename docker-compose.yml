@@ -11,10 +11,13 @@ services:
     networks:
       - postgres-net
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=CHANGE_ME
-      - POSTGRES_DB=vobsb_dev
     volumes:
-      - ./data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    driver: local
