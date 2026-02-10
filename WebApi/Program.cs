@@ -1,22 +1,22 @@
-
 using Application;
 using Infrastructure;
-using Persistence;
-using WebApi;
+using DotNetEnv;
+using DependencyInjection;
 
+// Load environment variables from .env file
+var envPath = Path.Combine(AppContext.BaseDirectory, "..", "..", ".env");
+Env.Load(envPath);
 
 var builder = WebApplication.CreateBuilder(args);
 {
     // Add services of the layers to the container.
-    //var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-
     builder.Services.
         AddWebApi().
         AddApplication().
-        AddInfrastructure().AddPersistence(builder.Configuration);
-
+        AddInfrastructure().
+        AddPersistence(builder.Configuration).
+        AddHealthChecks();
 }
-
 
 var app = builder.Build();
 
@@ -31,7 +31,7 @@ app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
-//app.MapControllers();
+app.MapControllers();
 
 app.MapHealthChecks("/health");
 
