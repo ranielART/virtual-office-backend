@@ -1,22 +1,23 @@
-version: '3.8'
+version: "3.8"
 
 networks:
   postgres-net:
     driver: bridge
 
-volumes:
-  postgres_data:
-
 services:
   postgres:
-    image: postgres:latest
+    image: postgres:17
     container_name: postgres
     networks:
       - postgres-net
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: CHANGE_ME
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=CHANGE_ME
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    driver: local
