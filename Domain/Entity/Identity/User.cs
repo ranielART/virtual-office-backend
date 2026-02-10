@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Domain.Enum;
+using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +14,13 @@ namespace Domain.Entity.Identity
         public string LastName { get; set; } = String.Empty;
         public string MiddleName { get; set; } = String.Empty;
         public string Address { get; set; } = String.Empty;
+
+        public RegistrationStatus Status { get; set; } = RegistrationStatus.Pending;
+
+        public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+        public bool RequiresPasswordChange { get; set; } = false; // since the admin generates the pass first, the user must change it on first login
+
         public ICollection<UserRole> Roles { get; set; } = default!;
 
     }
