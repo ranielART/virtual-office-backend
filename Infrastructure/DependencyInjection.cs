@@ -1,9 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Infrastructure.Services;
+using Application.services.User;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure
 {
@@ -11,7 +8,9 @@ namespace Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services)
         {
-            
+            // Register Token Service
+            services.AddScoped<ITokenService, TokenService>();
+
             return services;
         }
     }
