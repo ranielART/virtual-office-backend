@@ -1,7 +1,8 @@
-using Application.services.User.Command;
-using Application.services.User.Request;
+using Application.Services.User.Command;
+using Application.Services.User.Request;
 using Domain.Entity.Identity;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -52,6 +53,17 @@ namespace WebApi.Controllers
             {
                 var command = new LoginCommand(request);
                 var result = await _mediator.Send(command);
+
+
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,        // Prevents JS access
+                    Secure = true,          // Only over HTTPS
+                    SameSite = SameSiteMode.None, // Required for cross-origin Swagger testing
+                    Expires = DateTime.UtcNow.AddDays(7)
+                };
+
+                Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
                 return Ok(result);
             }
             catch (InvalidOperationException ex)

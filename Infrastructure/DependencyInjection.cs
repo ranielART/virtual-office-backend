@@ -1,6 +1,6 @@
 ﻿using Infrastructure.Services;
-using Application.services.User;
 using Microsoft.Extensions.DependencyInjection;
+using Application.Common.Interfaces;
 
 namespace Infrastructure
 {

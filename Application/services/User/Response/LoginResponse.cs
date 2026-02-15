@@ -1,4 +1,4 @@
-namespace Application.services.User.Response
+namespace Application.Services.User.Response
 {
     public class LoginResponse
     {

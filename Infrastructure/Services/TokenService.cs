@@ -1,11 +1,12 @@
-using Application.services.User;
+using Application.Common.Interfaces;
 using Domain.Entity.Identity;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.IdentityModel.Tokens;
-
 namespace Infrastructure.Services
 {
     public class TokenService : ITokenService
@@ -17,7 +18,7 @@ namespace Infrastructure.Services
             _configuration = configuration;
         }
 
-        public string GenerateAccessToken(User user)
+        public string GenerateAccessToken(User user, string role)
         {
             var secret = _configuration["Jwt:Secret"];
             if (string.IsNullOrEmpty(secret))
@@ -32,6 +33,7 @@ namespace Infrastructure.Services
                 new System.Security.Claims.Claim("sub", user.Id),
                 new System.Security.Claims.Claim("email", user.Email ?? string.Empty),
                 new System.Security.Claims.Claim("name", $"{user.FirstName} {user.LastName}"),
+                new Claim(ClaimTypes.Role, role),
                 new System.Security.Claims.Claim("jti", jti)
             };
 

@@ -9,7 +9,7 @@ namespace Domain.Enum
     public enum RegistrationStatus
     {
         Pending = 1, // Default for new registrations
-        Active = 2,  // Approved by Admin
+        Approved = 2,  // Approved by Admin
         Rejected = 3
     }
 }

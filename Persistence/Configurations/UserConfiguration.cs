@@ -32,11 +32,11 @@ namespace Persistence.Configurations
 
             // 6. Relationships
 
-            //// One-to-Many: User -> RefreshTokens (Cascade Delete)
-            //builder.HasMany(u => u.RefreshTokens)
-            //    .WithOne(rt => rt.User)
-            //    .HasForeignKey(rt => rt.UserId)
-            //    .OnDelete(DeleteBehavior.Cascade);
+            // One-to-Many: User -> RefreshTokens (Cascade Delete)
+            builder.HasMany(u => u.RefreshTokens)
+                .WithOne(rt => rt.User)
+                .HasForeignKey(rt => rt.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasMany(u => u.RefreshTokens)
                 .WithOne(rt => rt.User)

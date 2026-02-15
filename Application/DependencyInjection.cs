@@ -1,6 +1,9 @@
-﻿using MediatR;
+﻿using Application.Common.Behaviors;
+using Application.Services.User;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
-using Application.services.User;
+using FluentValidation;
+
 
 namespace Application
 {
@@ -11,6 +14,9 @@ namespace Application
             // Add MediatR
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
 
+            services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
+            // 3. Register Pipeline Behavior (Connects MediatR to FluentValidation)
+            services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
             // Add AutoMapper
             services.AddAutoMapper(typeof(UserMappingProfile));
 

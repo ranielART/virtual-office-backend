@@ -1,11 +1,12 @@
-using Application.services.User.Request;
-using Application.services.User.Response;
+using Application.Common.Interfaces;
+using Application.Services.User.Request;
+using Application.Services.User.Response;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Persistence.Data;
 using System.IdentityModel.Tokens.Jwt;
 
-namespace Application.services.User.Command
+namespace Application.Services.User.Command
 {
     public class LoginCommand : IRequest<LoginResponse>
     {
@@ -51,8 +52,13 @@ namespace Application.services.User.Command
                 throw new InvalidOperationException("Invalid email or password");
             }
 
+            var roles = await _userManager.GetRolesAsync(user);
+
+            // 2. Your TokenService needs a SINGLE string (for now).
+            // So we grab the first one. 
+            string userRole = roles.FirstOrDefault() ?? "Customer";
             // Generate access token
-            var accessToken = _tokenService.GenerateAccessToken(user);
+            var accessToken = _tokenService.GenerateAccessToken(user, userRole);
 
             // Extract JTI (JWT ID) from the access token to link with refresh token
             var handler = new JwtSecurityTokenHandler();
@@ -63,6 +69,7 @@ namespace Application.services.User.Command
             var refreshToken = await _tokenService.GenerateRefreshTokenAsync(user.Id, jwtId);
             _dbContext.Set<Domain.Entity.Identity.RefreshToken>().Add(refreshToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
+
 
             return new LoginResponse
             {

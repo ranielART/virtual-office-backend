@@ -1,11 +1,12 @@
 using Application;
-using Infrastructure;
-using DotNetEnv;
 using DependencyInjection;
+using DotNetEnv;
+using Infrastructure;
 using Microsoft.AspNetCore.Identity;
-using Persistence.Data;
 using Microsoft.EntityFrameworkCore;
-
+using Persistence.Data;
+using Persistence.Seeders;
+using Persistence;
 // Load environment variables from .env file
 var envPath = Path.Combine(AppContext.BaseDirectory, "..", "..", ".env");
 Env.Load(envPath);
@@ -22,7 +23,7 @@ var builder = WebApplication.CreateBuilder(args);
 
     // Add services of the layers to the container
     builder.Services
-        .AddWebApi()
+        .AddWebApi(builder.Configuration)
         .AddApplication()
         .AddInfrastructure()
         .AddHealthChecks();
@@ -33,10 +34,31 @@ var app = builder.Build();
 // Apply migrations automatically
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    dbContext.Database.Migrate();
+    var services = scope.ServiceProvider;
+    var dbContext = services.GetRequiredService<ApplicationDbContext>();
+
+    try
+    {
+        // 1. Apply Schema Changes (Create Tables)
+        dbContext.Database.Migrate();
+
+        // 2. Run Data Seeder (Insert Admin User) -> THIS IS THE NEW PART
+        var seeder = services.GetRequiredService<IDataSeeder>();
+        await seeder.SeedAsync();
+    }
+    catch (Exception ex)
+    {
+        // Good practice to log this, otherwise the app might crash silently on startup
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating or seeding the database.");
+    }
 }
 
+app.UseExceptionHandler();
+
+
+app.UseStatusCodePages();
+app.UseCors("Cors");
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

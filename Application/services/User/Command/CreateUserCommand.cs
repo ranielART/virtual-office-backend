@@ -1,12 +1,11 @@
-using Application.services.User.Request;
-using Application.services.User.Response;
+using Application.Services.User.Request;
+using Application.Services.User.Response;
 using AutoMapper;
-using Domain.Entity.Identity;
 using Domain.Enum;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 
-namespace Application.services.User.Command
+namespace Application.Services.User.Command
 {
     public class CreateUserCommand : IRequest<CreateUserResponse>
     {

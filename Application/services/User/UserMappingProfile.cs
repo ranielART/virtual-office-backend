@@ -1,8 +1,8 @@
-using Application.services.User.Response;
+using Application.Services.User.Response;
 using AutoMapper;
 using DomainEntity = Domain.Entity.Identity.User;
 
-namespace Application.services.User
+namespace Application.Services.User
 {
     public class UserMappingProfile : Profile
     {

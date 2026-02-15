@@ -1,37 +1,95 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Persistence.Data;
-
+﻿
+using WebApi.Infrastructure;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 namespace DependencyInjection
 {
     public static class DependencyInjection
     {
-        public static IServiceCollection AddPersistence(this IServiceCollection services, IConfiguration configuration)
-        {
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-            // Replace environment variable placeholders with actual values
-            connectionString = connectionString!
-                .Replace("${DB_HOST}", Environment.GetEnvironmentVariable("DB_HOST") ?? "localhost")
-                .Replace("${DB_PORT}", Environment.GetEnvironmentVariable("DB_PORT") ?? "5433")
-                .Replace("${DB_NAME}", Environment.GetEnvironmentVariable("DB_NAME") ?? "postgres")
-                .Replace("${DB_USER}", Environment.GetEnvironmentVariable("DB_USER") ?? "postgres")
-                .Replace("${DB_PASSWORD}", Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "postgres");
-
-            services.AddDbContext<ApplicationDbContext>(options =>
-            {
-                options.UseNpgsql(connectionString);
-                options.UseSnakeCaseNamingConvention();
-            });
-
-            return services;
-        }
-        public static IServiceCollection AddWebApi(this IServiceCollection services)
+        public static IServiceCollection AddWebApi(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddControllers();
             services.AddEndpointsApiExplorer();
-            services.AddSwaggerGen();
+
+
+            services.AddProblemDetails();
+            services.AddExceptionHandler<GlobalExceptionHandler>();
+
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true, 
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = configuration["Jwt:Issuer"] ?? "virtual-office-booking-api",
+                    ValidAudience = configuration["Jwt:Audience"] ?? "virtual-office-booking-client",
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Secret"] ?? throw new InvalidOperationException("JWT Secret Key is not configured"))),
+
+                    // This is the key fix - tells JWT handler which claim to use for roles
+                    RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
+                    NameClaimType = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+                };
+            });
+
+            // Add Authorization
+            services.AddAuthorization();
+
+
+
+            services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "Virtual Office API", Version = "v1" });
+
+                // Define the Security Scheme
+                options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+                    Scheme = "Bearer",
+                    BearerFormat = "JWT",
+                    In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+                    Description = "Enter 'Bearer' [space] and then your token. Example: 'Bearer abcdef12345'"
+                });
+
+                // Apply the requirement globally
+                options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+                {
+                    {
+                        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                        {
+                            Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                            {
+                                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+            });
+
+            services.AddCors(options =>
+            {
+                options.AddPolicy("Cors", policy =>
+                {
+                    policy.WithOrigins("http://localhost:5133", "https://localhost:7129")
+                          .AllowAnyMethod()
+                          .AllowAnyHeader()
+                          .AllowCredentials();
+                });
+            });
+
+
+
             return services;
         }
     }
