@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class usermigrations : Migration
+    public partial class ReqpassAndStatuses : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -31,10 +31,12 @@ namespace Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<string>(type: "text", nullable: false),
-                    first_name = table.Column<string>(type: "text", nullable: false),
-                    last_name = table.Column<string>(type: "text", nullable: false),
-                    middle_name = table.Column<string>(type: "text", nullable: false),
-                    address = table.Column<string>(type: "text", nullable: false),
+                    first_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    last_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    middle_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    address = table.Column<string>(type: "character varying(250)", maxLength: 250, nullable: false),
+                    status = table.Column<string>(type: "text", nullable: false),
+                    requires_password_change = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     user_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     normalized_user_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -72,6 +74,31 @@ namespace Persistence.Migrations
                         name: "fk_role_claims_roles_role_id",
                         column: x => x.role_id,
                         principalTable: "Roles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "refresh_token",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    token = table.Column<string>(type: "text", nullable: false),
+                    jwt_id = table.Column<string>(type: "text", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    expiry_date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    used = table.Column<bool>(type: "boolean", nullable: false),
+                    invalidated = table.Column<bool>(type: "boolean", nullable: false),
+                    user_id = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_refresh_token", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_refresh_token_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "Users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -122,9 +149,7 @@ namespace Persistence.Migrations
                 columns: table => new
                 {
                     user_id = table.Column<string>(type: "text", nullable: false),
-                    role_id = table.Column<string>(type: "text", nullable: false),
-                    user_id1 = table.Column<string>(type: "text", nullable: false),
-                    role_id1 = table.Column<string>(type: "text", nullable: false)
+                    role_id = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -136,20 +161,8 @@ namespace Persistence.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "fk_user_roles_roles_role_id1",
-                        column: x => x.role_id1,
-                        principalTable: "Roles",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
                         name: "fk_user_roles_users_user_id",
                         column: x => x.user_id,
-                        principalTable: "Users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_user_roles_users_user_id1",
-                        column: x => x.user_id1,
                         principalTable: "Users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -174,6 +187,11 @@ namespace Persistence.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_refresh_token_user_id",
+                table: "refresh_token",
+                column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_role_claims_role_id",
@@ -202,16 +220,6 @@ namespace Persistence.Migrations
                 column: "role_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_user_roles_role_id1",
-                table: "UserRoles",
-                column: "role_id1");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_user_roles_user_id1",
-                table: "UserRoles",
-                column: "user_id1");
-
-            migrationBuilder.CreateIndex(
                 name: "EmailIndex",
                 table: "Users",
                 column: "normalized_email");
@@ -226,6 +234,9 @@ namespace Persistence.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "refresh_token");
+
             migrationBuilder.DropTable(
                 name: "RoleClaims");
 

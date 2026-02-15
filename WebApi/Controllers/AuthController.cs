@@ -1,8 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Application.services.User.Command;
+using Application.services.User.Request;
 using Domain.Entity.Identity;
+using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,9 +12,12 @@ namespace WebApi.Controllers
     public class AuthController : ControllerBase
     {
         private readonly UserManager<User> _userManager;
-        public AuthController(UserManager<User> userManager)
+        private readonly IMediator _mediator;
+
+        public AuthController(UserManager<User> userManager, IMediator mediator)
         {
             _userManager = userManager;
+            _mediator = mediator;
         }
 
         [HttpGet("index")]
@@ -24,9 +26,42 @@ namespace WebApi.Controllers
             return Ok(new { message = "Hello World" });
         }
 
-        //public async Task<IActionResult> Register()
-        //{
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] CreateUserRequest request)
+        {
+            try
+            {
+                var command = new CreateUserCommand(request);
+                var result = await _mediator.Send(command);
+                return CreatedAtAction(nameof(Index), result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch
+            {
+                return StatusCode(500, new { error = "An error occurred during registration" });
+            }
+        }
 
-        //}
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+        {
+            try
+            {
+                var command = new LoginCommand(request);
+                var result = await _mediator.Send(command);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch
+            {
+                return StatusCode(500, new { error = "An error occurred during login" });
+            }
+        }
     }
 }
