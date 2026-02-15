@@ -12,8 +12,8 @@ using Persistence.Data;
 namespace Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260201154847_usermigrations")]
-    partial class usermigrations
+    [Migration("20260215111549_ReqpassAndStatuses")]
+    partial class ReqpassAndStatuses
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,57 @@ namespace Persistence.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("Domain.Entity.Identity.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expiry_date");
+
+                    b.Property<bool>("Invalidated")
+                        .HasColumnType("boolean")
+                        .HasColumnName("invalidated");
+
+                    b.Property<string>("JwtId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("jwt_id");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("token");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<bool>("Used")
+                        .HasColumnType("boolean")
+                        .HasColumnName("used");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_refresh_token");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_refresh_token_user_id");
+
+                    b.ToTable("refresh_token", (string)null);
+                });
 
             modelBuilder.Entity("Domain.Entity.Identity.Role", b =>
                 {
@@ -68,7 +119,8 @@ namespace Persistence.Migrations
 
                     b.Property<string>("Address")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
                         .HasColumnName("address");
 
                     b.Property<string>("ConcurrencyStamp")
@@ -87,12 +139,14 @@ namespace Persistence.Migrations
 
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("first_name");
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("last_name");
 
                     b.Property<bool>("LockoutEnabled")
@@ -105,7 +159,8 @@ namespace Persistence.Migrations
 
                     b.Property<string>("MiddleName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("middle_name");
 
                     b.Property<string>("NormalizedEmail")
@@ -130,9 +185,20 @@ namespace Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("phone_number_confirmed");
 
+                    b.Property<bool>("RequiresPasswordChange")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("requires_password_change");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text")
                         .HasColumnName("security_stamp");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
 
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean")
@@ -166,27 +232,11 @@ namespace Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("role_id");
 
-                    b.Property<string>("RoleId1")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("role_id1");
-
-                    b.Property<string>("UserId1")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_id1");
-
                     b.HasKey("UserId", "RoleId")
                         .HasName("pk_user_roles");
 
                     b.HasIndex("RoleId")
                         .HasDatabaseName("ix_user_roles_role_id");
-
-                    b.HasIndex("RoleId1")
-                        .HasDatabaseName("ix_user_roles_role_id1");
-
-                    b.HasIndex("UserId1")
-                        .HasDatabaseName("ix_user_roles_user_id1");
 
                     b.ToTable("UserRoles", (string)null);
                 });
@@ -305,35 +355,33 @@ namespace Persistence.Migrations
                     b.ToTable("UserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entity.Identity.RefreshToken", b =>
+                {
+                    b.HasOne("Domain.Entity.Identity.User", "User")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_refresh_token_users_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Domain.Entity.Identity.UserRole", b =>
                 {
-                    b.HasOne("Domain.Entity.Identity.Role", null)
-                        .WithMany()
+                    b.HasOne("Domain.Entity.Identity.Role", "Role")
+                        .WithMany("Users")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_roles_roles_role_id");
 
-                    b.HasOne("Domain.Entity.Identity.Role", "Role")
-                        .WithMany("Users")
-                        .HasForeignKey("RoleId1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_user_roles_roles_role_id1");
-
-                    b.HasOne("Domain.Entity.Identity.User", null)
-                        .WithMany()
+                    b.HasOne("Domain.Entity.Identity.User", "User")
+                        .WithMany("Roles")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_roles_users_user_id");
-
-                    b.HasOne("Domain.Entity.Identity.User", "User")
-                        .WithMany("Roles")
-                        .HasForeignKey("UserId1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_user_roles_users_user_id1");
 
                     b.Navigation("Role");
 
@@ -387,6 +435,8 @@ namespace Persistence.Migrations
 
             modelBuilder.Entity("Domain.Entity.Identity.User", b =>
                 {
+                    b.Navigation("RefreshTokens");
+
                     b.Navigation("Roles");
                 });
 #pragma warning restore 612, 618

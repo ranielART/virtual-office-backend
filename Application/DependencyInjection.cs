@@ -1,9 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using MediatR;
+using Microsoft.Extensions.DependencyInjection;
+using Application.services.User;
 
 namespace Application
 {
@@ -11,7 +8,11 @@ namespace Application
     {
         public static IServiceCollection AddApplication(this IServiceCollection services)
         {
+            // Add MediatR
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
 
+            // Add AutoMapper
+            services.AddAutoMapper(typeof(UserMappingProfile));
 
             return services;
         }
