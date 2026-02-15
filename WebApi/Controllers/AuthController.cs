@@ -24,9 +24,9 @@ namespace WebApi.Controllers
             return Ok(new { message = "Hello World" });
         }
 
-        public async Task<IActionResult> Register()
-        {
+        //public async Task<IActionResult> Register()
+        //{
 
-        }
+        //}
     }
 }
