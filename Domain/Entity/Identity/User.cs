@@ -23,5 +23,7 @@ namespace Domain.Entity.Identity
 
         public ICollection<UserRole> Roles { get; set; } = default!;
 
+        public Boolean IsActive { get; set; } = true; // For soft deletion or deactivation by admin
+
     }
 }

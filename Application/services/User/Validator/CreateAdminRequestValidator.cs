@@ -28,6 +28,10 @@ namespace Application.Services.User.Validator
                 .Matches("[a-z]").WithMessage("Password must contain at least one lowercase letter.")
                 .Matches("[0-9]").WithMessage("Password must contain at least one number.");
 
+            RuleFor(x => x.PhoneNumber)
+                .NotEmpty().WithMessage("Phone number is required")
+                .MinimumLength(10).WithMessage("Phone must be exactly 10 characters long.");
+
             RuleFor(x => x.ConfirmPassword)
                 .Equal(x => x.Password).WithMessage("Passwords do not match.");
         }

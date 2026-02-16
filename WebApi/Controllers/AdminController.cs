@@ -27,5 +27,17 @@ namespace WebApi.Controllers
 
             return Ok(result);
         }
+
+        [HttpPut("edit-admin/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> EditAdmin(string id, [FromBody] UpdateUserRequest request)
+        {
+            // Merge ID (route) and Data (body) into one Command
+            var command = new UpdateUserCommand(id, request);
+
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
     }
 }

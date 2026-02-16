@@ -44,7 +44,8 @@ namespace Application.Services.User.Command
                 Email = request.Email,
                 FirstName = request.FirstName,
                 LastName = request.LastName,
-                Address = request.Address,
+                PhoneNumber = request.PhoneNumber,
+                //Address = request.Address,
 
                 // Admins are automatically approved/active
                 Status = RegistrationStatus.Approved,

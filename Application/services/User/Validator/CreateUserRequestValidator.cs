@@ -27,6 +27,10 @@ namespace Application.Services.User.Validator
                 .NotEmpty().WithMessage("Password confirmation is required")
                 .Equal(x => x.Password).WithMessage("Passwords do not match");
 
+            RuleFor(x => x.PhoneNumber)
+                .NotEmpty().WithMessage("Phone number is required")
+                .MinimumLength(10).WithMessage("Phone must be exactly 10 characters long.");
+
             RuleFor(x => x.Address)
                 .MaximumLength(250).WithMessage("Address must not exceed 250 characters");
         }

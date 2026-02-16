@@ -25,6 +25,7 @@ namespace Persistence.Configurations
             builder.Property(u => u.Status)
                 .HasConversion<string>()
                 .IsRequired();
+            builder.Property(u => u.IsActive).IsRequired().HasDefaultValue(true);
 
             // 5. Default Value for Password Change Flag
             builder.Property(u => u.RequiresPasswordChange)

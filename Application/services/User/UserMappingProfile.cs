@@ -12,7 +12,9 @@ namespace Application.Services.User
             CreateMap<DomainEntity, CreateUserResponse>()
                 .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.Id))
                 .ForMember(dest => dest.Message, opt => opt.Ignore());
-
+            CreateMap<DomainEntity, CreateAdminResponse>()
+               .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.Id))
+               .ForMember(dest => dest.Message, opt => opt.Ignore());
             // Map User entity to LoginResponse
             CreateMap<DomainEntity, LoginResponse>()
                 .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.Id))

@@ -45,6 +45,7 @@ namespace Application.Services.User.Command
                 UserName = createUserRequest.Email,
                 Email = createUserRequest.Email,
                 FirstName = createUserRequest.FirstName,
+                PhoneNumber = createUserRequest.PhoneNumber, 
                 LastName = createUserRequest.LastName,
                 Address = createUserRequest.Address,
                 Status = RegistrationStatus.Pending,
