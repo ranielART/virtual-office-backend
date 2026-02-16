@@ -2,7 +2,8 @@
 using Application.Services.User.Response;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
-
+using FluentValidation;
+using FluentValidation.Results;
 namespace Application.Services.User.Command
 {
 
@@ -64,8 +65,15 @@ namespace Application.Services.User.Command
 
             if (!result.Succeeded)
             {
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new InvalidOperationException($"Failed to update user: {errors}");
+                // 1. Convert Identity Errors to FluentValidation Failures
+                var failures = result.Errors
+                    .Select(error => new ValidationFailure(
+                        propertyName: error.Code, // Or use "Password" if you prefer generic keys
+                        errorMessage: error.Description))
+                    .ToList();
+
+                // 2. Throw the exception that your GlobalExceptionHandler knows how to format
+                throw new ValidationException(failures);
             }
 
             return new UpdateUserResponse { Id = user.Id, Message = "User updated successfully." };
