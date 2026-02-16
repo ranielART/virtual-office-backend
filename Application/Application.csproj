@@ -21,4 +21,8 @@
     <ProjectReference Include="..\Persistence\Persistence.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Services\User\Query\Customer\" />
+  </ItemGroup>
+
 </Project>

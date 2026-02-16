@@ -63,7 +63,10 @@ app.UseCors("Cors");
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.EnablePersistAuthorization();
+    });
 }
 
 app.UseHttpsRedirection();

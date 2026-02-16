@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using FluentValidation; // 👈 1. Add this namespace
 
 namespace WebApi.Infrastructure
 {
@@ -23,28 +24,53 @@ namespace WebApi.Infrastructure
         {
             _logger.LogError(exception, "Unhandled exception occurred");
 
-            // Map standard exceptions to Status Codes
-            var statusCode = exception switch
+            // 2. Create the base ProblemDetails object
+            var problemDetails = new ProblemDetails
             {
-                ArgumentException => StatusCodes.Status400BadRequest,
-                InvalidOperationException => StatusCodes.Status400BadRequest,
-                _ => StatusCodes.Status500InternalServerError
+                Type = exception.GetType().Name,
+                Title = "An error occurred",
+                Detail = exception.Message,
+                Status = StatusCodes.Status500InternalServerError
             };
 
-            httpContext.Response.StatusCode = statusCode;
+            // 3. Handle Specific Exception Types
+            switch (exception)
+            {
+                // 👇 HANDLE VALIDATION ERRORS HERE
+                case ValidationException validationException:
+                    problemDetails.Status = StatusCodes.Status400BadRequest;
+                    problemDetails.Title = "Validation Failed";
+                    problemDetails.Detail = "Invalid Inputs.";
 
-            // Use IProblemDetailsService to write the response
-            // This is the core of Milan's "Modern" approach
+                    // Group errors by Field Name to create the array structure
+                    var errors = validationException.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                            g => g.Key,
+                            g => g.Select(e => e.ErrorMessage).ToArray()
+                        );
+
+                    // Add them to the "errors" field in JSON
+                    problemDetails.Extensions["errors"] = errors;
+                    break;
+
+                case ArgumentException:
+                case InvalidOperationException:
+                    problemDetails.Status = StatusCodes.Status400BadRequest;
+                    problemDetails.Title = "Bad Request";
+                    break;
+
+                default:
+                    problemDetails.Status = StatusCodes.Status500InternalServerError;
+                    break;
+            }
+
+            httpContext.Response.StatusCode = problemDetails.Status.Value;
+
             return await _problemDetailsService.TryWriteAsync(new ProblemDetailsContext
             {
                 HttpContext = httpContext,
-                ProblemDetails = new ProblemDetails
-                {
-                    Type = exception.GetType().Name,
-                    Title = "An error occurred",
-                    Detail = exception.Message, // In Prod, you might want to mask this for 500 errors
-                    Status = statusCode
-                },
+                ProblemDetails = problemDetails,
                 Exception = exception
             });
         }
