@@ -1,19 +1,19 @@
-﻿using FluentValidation;
-using Application.Services.User.Request;
+﻿using Application.Services.User.Command; // Assuming this is where your LoginCommand lives
+using FluentValidation;
 
 namespace Application.Services.User.Validator
 {
-    public class LoginRequestValidator : AbstractValidator<LoginRequest>
+    public class LoginCommandValidator : AbstractValidator<LoginCommand>
     {
-        public LoginRequestValidator()
+        public LoginCommandValidator()
         {
-            RuleFor(x => x.Email)
+            RuleFor(x => x.Request.Email)
                 .NotEmpty()
                 .WithMessage("Email is required")
                 .EmailAddress()
                 .WithMessage("Invalid email address");
 
-            RuleFor(x => x.Password)
+            RuleFor(x => x.Request.Password)
                 .NotEmpty()
                 .WithMessage("Password is required");
         }

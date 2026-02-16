@@ -4,15 +4,18 @@ using DotNetEnv;
 using Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Persistence;
 using Persistence.Data;
 using Persistence.Seeders;
-using Persistence;
+using Serilog;
 // Load environment variables from .env file
 var envPath = Path.Combine(AppContext.BaseDirectory, "..", "..", ".env");
 Env.Load(envPath);
 
 var builder = WebApplication.CreateBuilder(args);
 {
+
+    builder.AddSerilogLogging();
     // Add Persistence first (registers DbContext)
     builder.Services.AddPersistence(builder.Configuration);
 
@@ -27,7 +30,9 @@ var builder = WebApplication.CreateBuilder(args);
         .AddApplication()
         .AddInfrastructure()
         .AddHealthChecks();
+
 }
+
 
 var app = builder.Build();
 
