@@ -1,8 +1,10 @@
 ﻿
-using WebApi.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
+using Serilog.Sinks.SystemConsole.Themes;
 using System.Text;
+using WebApi.Infrastructure;
 namespace DependencyInjection
 {
     public static class DependencyInjection
@@ -91,6 +93,29 @@ namespace DependencyInjection
 
 
             return services;
+        }
+
+        public static WebApplicationBuilder AddSerilogLogging(this WebApplicationBuilder builder)
+        {
+            // 1. Clear default logging providers (keeps logs clean)
+            builder.Logging.ClearProviders();
+
+            // 2. Configure Serilog
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(builder.Configuration)
+                .Enrich.FromLogContext()
+                .Enrich.WithMachineName()
+                .Enrich.WithThreadId()
+                .Enrich.WithEnvironmentName()
+                .WriteTo.Console(theme: AnsiConsoleTheme.Code, outputTemplate:
+                    "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
+                .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
+                .CreateLogger();
+
+            // 3. Register Serilog with the Host
+            builder.Host.UseSerilog();
+
+            return builder;
         }
     }
 }
