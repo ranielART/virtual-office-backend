@@ -1,4 +1,5 @@
 using Domain.Entity.Identity;
+using System.Security.Claims;
 
 namespace Application.Common.Interfaces
 {
@@ -6,5 +7,6 @@ namespace Application.Common.Interfaces
     {
         string GenerateAccessToken(User user, string role);
         Task<RefreshToken> GenerateRefreshTokenAsync(string userId, string jwtId);
+        ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
     }
 }
