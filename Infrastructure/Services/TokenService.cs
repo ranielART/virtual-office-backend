@@ -48,6 +48,36 @@ namespace Infrastructure.Services
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
+        public ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
+        {
+            var secret = _configuration["Jwt:Secret"];
+            if (string.IsNullOrEmpty(secret))
+                throw new InvalidOperationException("JWT Secret is not configured");
+
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateAudience = true,
+                ValidAudience = _configuration["Jwt:Audience"],
+                ValidateIssuer = true,
+                ValidIssuer = _configuration["Jwt:Issuer"],
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+                ValidateLifetime = false // Allow expired tokens
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            tokenHandler.MapInboundClaims = false; // Preserve original claim names (sub, jti, etc.)
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var securityToken);
+
+            if (securityToken is not JwtSecurityToken jwtSecurityToken ||
+                !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+            {
+                throw new SecurityTokenException("Invalid token");
+            }
+
+            return principal;
+        }
+
         public async Task<RefreshToken> GenerateRefreshTokenAsync(string userId, string jwtId)
         {
             var randomNumber = new byte[64];

@@ -76,5 +76,56 @@ namespace WebApi.Controllers
                 return StatusCode(500, new { error = "An error occurred during login" });
             }
         }
+
+
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
+        {
+            try
+            {
+                var command = new RefreshTokenCommand(request);
+                var result = await _mediator.Send(command);
+
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTime.UtcNow.AddDays(7)
+                };
+
+                Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch
+            {
+                return StatusCode(500, new { error = "An error occurred during token refresh" });
+            }
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var refreshToken = Request.Cookies["refreshToken"];
+
+            if (!string.IsNullOrEmpty(refreshToken))
+            {
+                var command = new LogoutCommand(refreshToken);
+                await _mediator.Send(command);
+            }
+
+            Response.Cookies.Delete("refreshToken", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None
+            });
+
+            return Ok(new { message = "Logged out successfully" });
+        }
     }
 }

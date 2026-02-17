@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace WebApi.Controllers
 {
     [Route("api/admin")]
+
     [ApiController]
     public class AdminController : ControllerBase
     {
