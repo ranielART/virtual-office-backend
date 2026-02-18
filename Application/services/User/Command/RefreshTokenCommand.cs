@@ -1,3 +1,4 @@
+using Application.Common.Exceptions;
 using Application.Common.Interfaces;
 using Application.Services.User.Request;
 using Application.Services.User.Response;
@@ -42,16 +43,16 @@ namespace Application.Services.User.Command
             // 1. Extract claims from the expired access token
             var principal = _tokenService.GetPrincipalFromExpiredToken(refreshTokenRequest.AccessToken);
             var userId = principal.FindFirst("sub")?.Value
-                ?? throw new InvalidOperationException("Invalid access token");
+                ?? throw new UnauthorizedException("Invalid access token");
             var jti = principal.FindFirst("jti")?.Value
-                ?? throw new InvalidOperationException("Invalid access token");
+                ?? throw new UnauthorizedException("Invalid access token");
 
             // 2. Look up the refresh token in the database
             var storedRefreshToken = await _dbContext.Set<Domain.Entity.Identity.RefreshToken>()
                 .FirstOrDefaultAsync(rt => rt.Token == refreshTokenRequest.RefreshToken, cancellationToken);
 
             if (storedRefreshToken == null)
-                throw new InvalidOperationException("Invalid refresh token");
+                throw new UnauthorizedException("Invalid refresh token");
 
             // 3. Breach detection: if this token was already used, invalidate ALL tokens for the user
             if (storedRefreshToken.Used)
@@ -67,21 +68,21 @@ namespace Application.Services.User.Command
                 }
 
                 await _dbContext.SaveChangesAsync(cancellationToken);
-                throw new InvalidOperationException("Potential token reuse detected. All sessions have been invalidated. Please log in again.");
+                throw new UnauthorizedException("Potential token reuse detected. All sessions have been invalidated. Please log in again.");
             }
 
             // 4. Validate the refresh token
             if (storedRefreshToken.Invalidated)
-                throw new InvalidOperationException("Refresh token has been revoked");
+                throw new UnauthorizedException("Refresh token has been revoked");
 
             if (storedRefreshToken.ExpiryDate < DateTime.UtcNow)
-                throw new InvalidOperationException("Refresh token has expired");
+                throw new UnauthorizedException("Refresh token has expired");
 
             if (storedRefreshToken.UserId != userId)
-                throw new InvalidOperationException("Refresh token does not belong to this user");
+                throw new UnauthorizedException("Refresh token does not belong to this user");
 
             if (storedRefreshToken.JwtId != jti)
-                throw new InvalidOperationException("Refresh token does not match the access token");
+                throw new UnauthorizedException("Refresh token does not match the access token");
 
             // 5. Mark old refresh token as used
             storedRefreshToken.Used = true;
@@ -89,7 +90,7 @@ namespace Application.Services.User.Command
 
             // 6. Get user and role for new access token
             var user = await _userManager.FindByIdAsync(userId)
-                ?? throw new InvalidOperationException("User not found");
+                ?? throw new NotFoundException("User not found");
 
             var roles = await _userManager.GetRolesAsync(user);
             string userRole = roles.FirstOrDefault() ?? "Customer";

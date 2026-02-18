@@ -1,32 +1,34 @@
-﻿using Application.Services.User.Query.User;
-
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 
-
-namespace Application.Services.User.Query.Admin
+namespace Application.Services.User.Query.User
 {
-    public class GetAllArchivedAdminsQuery : IRequest<List<UserDto>> { }
+    public class GetActiveUsersByRoleQuery : IRequest<List<UserDto>>
+    {
+        public string Role { get; set; }
 
-    public class GetAllArchivedAdminsQueryHandler : IRequestHandler<GetAllArchivedAdminsQuery, List<UserDto>>
+        public GetActiveUsersByRoleQuery(string role)
+        {
+            Role = role;
+        }
+    }
+
+    public class GetActiveUsersByRoleQueryHandler : IRequestHandler<GetActiveUsersByRoleQuery, List<UserDto>>
     {
         private readonly UserManager<Domain.Entity.Identity.User> _userManager;
 
-        public GetAllArchivedAdminsQueryHandler(UserManager<Domain.Entity.Identity.User> userManager)
+        public GetActiveUsersByRoleQueryHandler(UserManager<Domain.Entity.Identity.User> userManager)
         {
             _userManager = userManager;
         }
 
-        public async Task<List<UserDto>> Handle(GetAllArchivedAdminsQuery request, CancellationToken cancellationToken)
+        public async Task<List<UserDto>> Handle(GetActiveUsersByRoleQuery request, CancellationToken cancellationToken)
         {
-            // Get all users who are IN the 'Admin' role AND are NOT Active
-            var admins = await _userManager.GetUsersInRoleAsync("Admin");
-
-            // Filter for Inactive
-            var archivedAdmins = admins.Where(u => !u.IsActive).ToList();
+            var usersInRole = await _userManager.GetUsersInRoleAsync(request.Role);
+            var activeUsers = usersInRole.Where(u => u.IsActive).ToList();
 
             var userDtos = new List<UserDto>();
-            foreach (var user in archivedAdmins)
+            foreach (var user in activeUsers)
             {
                 var roles = await _userManager.GetRolesAsync(user);
                 userDtos.Add(new UserDto
@@ -41,6 +43,7 @@ namespace Application.Services.User.Query.Admin
                     Roles = roles
                 });
             }
+
             return userDtos;
         }
     }

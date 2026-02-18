@@ -1,3 +1,4 @@
+using Application.Common.Exceptions;
 using Application.Common.Interfaces;
 using Application.Services.User.Request;
 using Application.Services.User.Response;
@@ -42,14 +43,14 @@ namespace Application.Services.User.Command
             var user = await _userManager.FindByEmailAsync(loginRequest.Email);
             if (user == null)
             {
-                throw new InvalidOperationException("Invalid email or password");
+                throw new UnauthorizedException("Invalid email or password");
             }
 
             // Check password
             var passwordValid = await _userManager.CheckPasswordAsync(user, loginRequest.Password);
             if (!passwordValid)
             {
-                throw new InvalidOperationException("Invalid email or password");
+                throw new UnauthorizedException("Invalid email or password");
             }
 
             var roles = await _userManager.GetRolesAsync(user);

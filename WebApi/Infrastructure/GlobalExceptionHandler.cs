@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+﻿using Application.Common.Exceptions;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using FluentValidation; // 👈 1. Add this namespace
+using FluentValidation;
 
 namespace WebApi.Infrastructure
 {
@@ -54,6 +55,16 @@ namespace WebApi.Infrastructure
                     problemDetails.Extensions["errors"] = errors;
                     break;
 
+                case UnauthorizedException:
+                    problemDetails.Status = StatusCodes.Status401Unauthorized;
+                    problemDetails.Title = "Unauthorized";
+                    break;
+
+                case NotFoundException:
+                    problemDetails.Status = StatusCodes.Status404NotFound;
+                    problemDetails.Title = "Not Found";
+                    break;
+
                 case ArgumentException:
                 case InvalidOperationException:
                     problemDetails.Status = StatusCodes.Status400BadRequest;
@@ -62,6 +73,8 @@ namespace WebApi.Infrastructure
 
                 default:
                     problemDetails.Status = StatusCodes.Status500InternalServerError;
+                    problemDetails.Title = "Internal Server Error";
+                    problemDetails.Detail = "An unexpected error occurred.";
                     break;
             }
 

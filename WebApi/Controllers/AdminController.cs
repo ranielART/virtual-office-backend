@@ -1,14 +1,14 @@
-﻿using Application.Services.User.Command;
-using Application.Services.User.Query.Admin;
+using Application.Services.User.Command;
+using Application.Services.User.Query;
 using Application.Services.User.Query.User;
 using Application.Services.User.Request;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+
 namespace WebApi.Controllers
 {
     [Route("api/admin")]
-
     [ApiController]
     public class AdminController : ControllerBase
     {
@@ -23,10 +23,8 @@ namespace WebApi.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateAdmin([FromBody] CreateAdminRequest request)
         {
-            // We wrap the request in the command and send it to MediatR
             var command = new CreateAdminCommand(request);
             var result = await _mediator.Send(command);
-
             return Ok(result);
         }
 
@@ -34,9 +32,7 @@ namespace WebApi.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> EditAdmin(string id, [FromBody] UpdateUserRequest request)
         {
-            // Merge ID (route) and Data (body) into one Command
             var command = new UpdateUserCommand(id, request);
-
             var result = await _mediator.Send(command);
             return Ok(result);
         }
@@ -57,23 +53,29 @@ namespace WebApi.Controllers
             return Ok(result);
         }
 
-        // GET: api/User/active-admins
         [HttpGet("active-admins")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllActiveAdmins()
         {
-            var result = await _mediator.Send(new GetAllActiveAdminsQuery());
+            var result = await _mediator.Send(new GetActiveUsersByRoleQuery("Admin"));
             return Ok(result);
         }
 
-        // GET: api/User/archived-admins
         [HttpGet("archived-admins")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllArchivedAdmins()
         {
-            var result = await _mediator.Send(new GetAllArchivedAdminsQuery());
+            var result = await _mediator.Send(new GetArchivedUsersByRoleQuery("Admin"));
             return Ok(result);
         }
 
+        [HttpPost("reset-password/{userId}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ResetPassword(string userId, [FromBody] ResetPasswordRequest request)
+        {
+            var command = new ResetPasswordCommand(userId, request);
+            await _mediator.Send(command);
+            return Ok(new { message = "Password reset successfully. The user will be required to change their password on next login." });
+        }
     }
 }

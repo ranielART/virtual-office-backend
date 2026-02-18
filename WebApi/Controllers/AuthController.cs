@@ -1,8 +1,10 @@
+using Application.Common.Exceptions;
 using Application.Services.User.Command;
 using Application.Services.User.Request;
 
 using Domain.Entity.Identity;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -31,80 +33,57 @@ namespace WebApi.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] CreateUserRequest request)
         {
-            try
-            {
-                var command = new CreateUserCommand(request);
-                var result = await _mediator.Send(command);
-                return CreatedAtAction(nameof(Index), result);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
-            catch
-            {
-                return StatusCode(500, new { error = "An error occurred during registration" });
-            }
+            var command = new CreateUserCommand(request);
+            var result = await _mediator.Send(command);
+            return CreatedAtAction(nameof(Index), result);
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            try
-            {
-                var command = new LoginCommand(request);
-                var result = await _mediator.Send(command);
+            var command = new LoginCommand(request);
+            var result = await _mediator.Send(command);
 
-
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,        // Prevents JS access
-                    Secure = true,          // Only over HTTPS
-                    SameSite = SameSiteMode.None, // Required for cross-origin Swagger testing
-                    Expires = DateTime.UtcNow.AddDays(7)
-                };
-
-                Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
-                return Ok(result);
-            }
-            catch (InvalidOperationException ex)
+            var cookieOptions = new CookieOptions
             {
-                return Unauthorized(new { error = ex.Message });
-            }
-            catch
-            {
-                return StatusCode(500, new { error = "An error occurred during login" });
-            }
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
+
+            Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
+            return Ok(result);
         }
-
 
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
         {
-            try
-            {
-                var command = new RefreshTokenCommand(request);
-                var result = await _mediator.Send(command);
+            var command = new RefreshTokenCommand(request);
+            var result = await _mediator.Send(command);
 
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = true,
-                    SameSite = SameSiteMode.None,
-                    Expires = DateTime.UtcNow.AddDays(7)
-                };
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
 
-                Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
-                return Ok(result);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Unauthorized(new { error = ex.Message });
-            }
-            catch
-            {
-                return StatusCode(500, new { error = "An error occurred during token refresh" });
-            }
+            Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
+            return Ok(result);
+        }
+
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            var userId = User.FindFirst("sub")?.Value
+                ?? throw new UnauthorizedException("Invalid token.");
+
+            var command = new ChangePasswordCommand(userId, request);
+            await _mediator.Send(command);
+            return Ok(new { message = "Password changed successfully." });
         }
 
         [HttpPost("logout")]
