@@ -5,6 +5,16 @@ on:
     branches:
       - dev
   workflow_dispatch:
+env:
+  ASPNETCORE_ENVIRONMENT: ${{ secrets.ASPNETCORE_ENVIRONMENT}}
+  DB_HOST: ${{ secrets.DB_HOST}}
+  DB_PORT: ${{ secrets.DB_PORT}}
+  DB_NAME: ${{ secrets.DB_NAME}}
+  DB_USER: ${{ secrets.DB_USER}}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD}}
+  JWT_SECRET: ${{ secrets.JWT_SECRET}}
+  JWT_EXPIRY_MINUTES: ${{ secrets.JWT_EXPIRY_MINUTES}}
+  JWT_REFRESH_TOKEN_EXPIRY_DAYS: ${{ secrets.JWT_REFRESH_TOKEN_EXPIRY_DAYS}}
 
 jobs:
   build:
@@ -62,3 +72,4 @@ jobs:
           app-name: 'communside'
           slot-name: 'Production'
           package: .
+
