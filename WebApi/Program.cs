@@ -43,6 +43,10 @@ var builder = WebApplication.CreateBuilder(args);
     builder.Configuration["Jwt:ExpiryMinutes"] = Environment.GetEnvironmentVariable("JWT_EXPIRY_MINUTES");
     builder.Configuration["Jwt:RefreshTokenExpiryDays"] = Environment.GetEnvironmentVariable("JWT_REFRESH_TOKEN_EXPIRY_DAYS");
 
+    // Build Azure Communication Services configuration from environment variables
+    builder.Configuration["AzureCommunicationServices:ConnectionString"] = Environment.GetEnvironmentVariable("AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING");
+    builder.Configuration["AzureCommunicationServices:SenderAddress"] = Environment.GetEnvironmentVariable("AZURE_COMMUNICATION_SERVICES_SENDER_ADDRESS");
+
     builder.AddSerilogLogging();
     // Add Persistence first (registers DbContext)
     builder.Services.AddPersistence(builder.Configuration);

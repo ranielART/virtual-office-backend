@@ -6,6 +6,7 @@ using MediatR;
 using Microsoft.AspNetCore.Identity;
 using FluentValidation;
 using FluentValidation.Results;
+using Application.Common.Interfaces;
 
 namespace Application.Services.User.Command
 {
@@ -23,11 +24,13 @@ namespace Application.Services.User.Command
     {
         private readonly UserManager<Domain.Entity.Identity.User> _userManager;
         private readonly IMapper _mapper;
+        private readonly IEmailService _emailService;
 
-        public CreateUserCommandHandler(UserManager<Domain.Entity.Identity.User> userManager, IMapper mapper)
+        public CreateUserCommandHandler(UserManager<Domain.Entity.Identity.User> userManager, IMapper mapper, IEmailService emailService)
         {
             _userManager = userManager;
             _mapper = mapper;
+            _emailService = emailService;
         }
 
         public async Task<CreateUserResponse> Handle(CreateUserCommand request, CancellationToken cancellationToken)
@@ -47,7 +50,7 @@ namespace Application.Services.User.Command
                 UserName = createUserRequest.Email,
                 Email = createUserRequest.Email,
                 FirstName = createUserRequest.FirstName,
-                PhoneNumber = createUserRequest.PhoneNumber, 
+                PhoneNumber = createUserRequest.PhoneNumber,
                 LastName = createUserRequest.LastName,
                 Address = createUserRequest.Address,
                 Status = RegistrationStatus.Pending,
@@ -70,6 +73,14 @@ namespace Application.Services.User.Command
                 // 2. Throw the exception that your GlobalExceptionHandler knows how to format
                 throw new ValidationException(failures);
             }
+
+            //  send email sample code, you can customize the email content as needed
+            // await _emailService.SendEmailAsync(
+            //     user.Email,
+            //     "Welcome to Virtual Office Booking System",
+            //     "<h1>Your account has been created successfully.</h1><br><p>Your registration is currently pending approval. You will receive another email once your account has been approved.</p>"
+            //     );
+
 
             // Return response
             return new CreateUserResponse
