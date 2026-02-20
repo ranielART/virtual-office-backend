@@ -30,6 +30,9 @@ namespace Infrastructure
             // Register Token Service
             services.AddScoped<ITokenService, TokenService>();
 
+            // Register Email Service
+            services.AddScoped<IEmailService, EmailService>();
+
             return services;
         }
     }

@@ -47,6 +47,10 @@ var builder = WebApplication.CreateBuilder(args);
     builder.Configuration["AzureCommunicationServices:ConnectionString"] = Environment.GetEnvironmentVariable("AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING");
     builder.Configuration["AzureCommunicationServices:SenderAddress"] = Environment.GetEnvironmentVariable("AZURE_COMMUNICATION_SERVICES_SENDER_ADDRESS");
 
+    // Build Azure Communication Services configuration from environment variables
+    builder.Configuration["AzureCommunicationServices:ConnectionString"] = Environment.GetEnvironmentVariable("AZURE_COMMUNICATION_SERVICES_CONNECTION_STRING");
+    builder.Configuration["AzureCommunicationServices:SenderAddress"] = Environment.GetEnvironmentVariable("AZURE_COMMUNICATION_SERVICES_SENDER_ADDRESS");
+
     // Build Azure Storage configuration from environment variables
     builder.Configuration["Storage:ConnectionString"] = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING");
     builder.Configuration["Storage:ContainerName"] = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONTAINER_NAME");

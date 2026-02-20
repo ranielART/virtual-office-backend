@@ -485,3 +485,5 @@ $RECYCLE.BIN/
 
 # Docker data files
 data/
+
+.env.dev
