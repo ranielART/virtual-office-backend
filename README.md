@@ -50,19 +50,19 @@ Each layer exposes its registrations through a single `DependencyInjection.cs` e
 
 ## Tech Stack
 
-| Concern | Technology |
-|---|---|
-| Framework | ASP.NET Core 9.0 |
-| Language | C# 13 |
-| ORM | Entity Framework Core 9.0 |
-| Database | PostgreSQL (via Npgsql) |
-| Authentication | JWT Bearer + Refresh Tokens |
-| CQRS / Mediator | MediatR 12 |
-| Validation | FluentValidation 12 |
-| Object Mapping | AutoMapper 12 |
-| Logging | Serilog (console + rolling file) |
-| API Documentation | Swagger (Swashbuckle) |
-| Environment Config | DotNetEnv |
+| Concern              | Technology                            |
+| -------------------- | ------------------------------------- |
+| Framework            | ASP.NET Core 9.0                      |
+| Language             | C# 13                                 |
+| ORM                  | Entity Framework Core 9.0             |
+| Database             | PostgreSQL (via Npgsql)               |
+| Authentication       | JWT Bearer + Refresh Tokens           |
+| CQRS / Mediator      | MediatR 12                            |
+| Validation           | FluentValidation 12                   |
+| Object Mapping       | AutoMapper 12                         |
+| Logging              | Serilog (console + rolling file)      |
+| API Documentation    | Swagger (Swashbuckle)                 |
+| Environment Config   | DotNetEnv                             |
 | DB Naming Convention | snake_case (EFCore.NamingConventions) |
 
 ---
@@ -140,9 +140,11 @@ virtual-office-booking-system-backend/
 2. **Create a `.env` file** at the repository root (same level as the `.sln` file). See [Environment Variables](#environment-variables) for the required keys.
 
 3. **Run the application**
+
    ```bash
    dotnet run --project WebApi
    ```
+
    On startup, the application will:
    - Apply any pending EF Core migrations automatically
    - Seed the three roles (`Admin`, `Customer`, `Frontdesk`)
@@ -167,16 +169,18 @@ All secrets and environment-specific configuration are loaded from a `.env` file
 
 The following variables are required:
 
-| Variable | Description |
-|---|---|
-| `DB_HOST` | PostgreSQL host |
-| `DB_PORT` | PostgreSQL port |
-| `DB_NAME` | Database name |
-| `DB_USER` | Database username |
-| `DB_PASSWORD` | Database password |
-| `JWT_SECRET` | Signing key for JWT tokens (keep long and random) |
-| `JWT_EXPIRY_MINUTES` | Access token lifetime in minutes |
-| `JWT_REFRESH_TOKEN_EXPIRY_DAYS` | Refresh token lifetime in days |
+| Variable                          | Description                                        |
+| --------------------------------- | -------------------------------------------------- |
+| `DB_HOST`                         | PostgreSQL host                                    |
+| `DB_PORT`                         | PostgreSQL port                                    |
+| `DB_NAME`                         | Database name                                      |
+| `DB_USER`                         | Database username                                  |
+| `DB_PASSWORD`                     | Database password                                  |
+| `JWT_SECRET`                      | Signing key for JWT tokens (keep long and random)  |
+| `JWT_EXPIRY_MINUTES`              | Access token lifetime in minutes                   |
+| `JWT_REFRESH_TOKEN_EXPIRY_DAYS`   | Refresh token lifetime in days                     |
+| `AZURE_STORAGE_CONNECTION_STRING` | Azure Blob Storage connection string               |
+| `AZURE_STORAGE_CONTAINER_NAME`    | Container name for blob storage (default: "files") |
 
 `appsettings.json` stores non-secret config only (Issuer, Audience, log levels). Secrets are injected into `IConfiguration` at startup from the environment variables above.
 
@@ -192,11 +196,11 @@ The following variables are required:
 
 ### Key Tables
 
-| Table | Description |
-|---|---|
-| `users` | All users across all roles |
-| `roles` | Role definitions (Admin, Customer, Frontdesk) |
-| `user_roles` | Join table linking users to roles |
+| Table            | Description                                              |
+| ---------------- | -------------------------------------------------------- |
+| `users`          | All users across all roles                               |
+| `roles`          | Role definitions (Admin, Customer, Frontdesk)            |
+| `user_roles`     | Join table linking users to roles                        |
 | `refresh_tokens` | One row per issued refresh token, tracks lifecycle flags |
 
 ---
@@ -225,12 +229,12 @@ The API uses a **stateless JWT + stateful Refresh Token** strategy.
 
 Endpoints are protected with `[Authorize]` attributes:
 
-| Attribute | Who can access |
-|---|---|
-| `[Authorize]` | Any authenticated user (any role) |
-| `[Authorize(Roles = "Admin")]` | Admin only |
-| `[Authorize(Roles = "Admin,Frontdesk")]` | Admin or Frontdesk |
-| _(no attribute)_ | Public |
+| Attribute                                | Who can access                    |
+| ---------------------------------------- | --------------------------------- |
+| `[Authorize]`                            | Any authenticated user (any role) |
+| `[Authorize(Roles = "Admin")]`           | Admin only                        |
+| `[Authorize(Roles = "Admin,Frontdesk")]` | Admin or Frontdesk                |
+| _(no attribute)_                         | Public                            |
 
 ---
 
@@ -267,11 +271,11 @@ POST /api/auth/logout
 
 Three roles are seeded automatically on startup:
 
-| Role | Casing | Description |
-|---|---|---|
-| `Admin` | `Admin` | Full system access |
-| `Frontdesk` | `Frontdesk` | Front desk staff |
-| `Customer` | `Customer` | End users |
+| Role        | Casing      | Description        |
+| ----------- | ----------- | ------------------ |
+| `Admin`     | `Admin`     | Full system access |
+| `Frontdesk` | `Frontdesk` | Front desk staff   |
+| `Customer`  | `Customer`  | End users          |
 
 > **Important:** Role names are case-sensitive throughout the codebase. Always use the exact casing shown above when passing role strings to queries or `UserManager` calls.
 
@@ -279,11 +283,11 @@ Three roles are seeded automatically on startup:
 
 Users also have a `RegistrationStatus` enum:
 
-| Status | Meaning |
-|---|---|
-| `Pending` | Default for self-registered users; awaiting admin approval |
-| `Approved` | User can log in |
-| `Rejected` | Registration rejected |
+| Status     | Meaning                                                    |
+| ---------- | ---------------------------------------------------------- |
+| `Pending`  | Default for self-registered users; awaiting admin approval |
+| `Approved` | User can log in                                            |
+| `Rejected` | Registration rejected                                      |
 
 Admin and Frontdesk accounts are created with `Status = Approved` and `EmailConfirmed = true` by default since they are provisioned by an administrator.
 
@@ -297,39 +301,39 @@ When an admin creates or resets a user's password, `RequiresPasswordChange` is s
 
 ### Auth — `api/auth`
 
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| `GET` | `/index` | Public | Health check |
-| `POST` | `/register` | Public | Self-register a new user (Customer) |
-| `POST` | `/login` | Public | Authenticate; returns AT + RT in body and cookie |
-| `POST` | `/refresh` | Public | Rotate refresh token; returns new AT + RT |
-| `POST` | `/change-password` | Any role | Change own password (requires current password) |
-| `POST` | `/logout` | Public | Invalidate refresh token, delete cookie |
+| Method | Endpoint           | Auth     | Description                                      |
+| ------ | ------------------ | -------- | ------------------------------------------------ |
+| `GET`  | `/index`           | Public   | Health check                                     |
+| `POST` | `/register`        | Public   | Self-register a new user (Customer)              |
+| `POST` | `/login`           | Public   | Authenticate; returns AT + RT in body and cookie |
+| `POST` | `/refresh`         | Public   | Rotate refresh token; returns new AT + RT        |
+| `POST` | `/change-password` | Any role | Change own password (requires current password)  |
+| `POST` | `/logout`          | Public   | Invalidate refresh token, delete cookie          |
 
 ### Admin Management — `api/admin`
 
 All endpoints require `Admin` role.
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/create-admin` | Create a new Admin user |
-| `PUT` | `/edit-admin/{id}` | Update an Admin's profile |
-| `DELETE` | `/delete-admin/{id}` | Soft-delete an Admin (sets `IsActive=false`) |
-| `GET` | `/get-admin/{id}` | Get Admin by ID |
-| `GET` | `/active-admins` | List all active Admins |
-| `GET` | `/archived-admins` | List all deactivated Admins |
-| `POST` | `/reset-password/{userId}` | Reset any user's password without knowing the current one |
+| Method   | Endpoint                   | Description                                               |
+| -------- | -------------------------- | --------------------------------------------------------- |
+| `POST`   | `/create-admin`            | Create a new Admin user                                   |
+| `PUT`    | `/edit-admin/{id}`         | Update an Admin's profile                                 |
+| `DELETE` | `/delete-admin/{id}`       | Soft-delete an Admin (sets `IsActive=false`)              |
+| `GET`    | `/get-admin/{id}`          | Get Admin by ID                                           |
+| `GET`    | `/active-admins`           | List all active Admins                                    |
+| `GET`    | `/archived-admins`         | List all deactivated Admins                               |
+| `POST`   | `/reset-password/{userId}` | Reset any user's password without knowing the current one |
 
 ### FrontDesk Management — `api/frontdesk`
 
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| `POST` | `/create-frontdesk` | Admin | Create a new FrontDesk user |
-| `PUT` | `/edit-frontdesk/{id}` | Admin, Frontdesk | Update a FrontDesk profile |
-| `DELETE` | `/delete-frontdesk/{id}` | Admin | Soft-delete a FrontDesk user |
-| `GET` | `/get-frontdesk/{id}` | Admin, Frontdesk | Get FrontDesk user by ID |
-| `GET` | `/active-frontdesks` | Admin | List all active FrontDesk users |
-| `GET` | `/archived-frontdesks` | Admin | List all archived FrontDesk users |
+| Method   | Endpoint                 | Auth             | Description                       |
+| -------- | ------------------------ | ---------------- | --------------------------------- |
+| `POST`   | `/create-frontdesk`      | Admin            | Create a new FrontDesk user       |
+| `PUT`    | `/edit-frontdesk/{id}`   | Admin, Frontdesk | Update a FrontDesk profile        |
+| `DELETE` | `/delete-frontdesk/{id}` | Admin            | Soft-delete a FrontDesk user      |
+| `GET`    | `/get-frontdesk/{id}`    | Admin, Frontdesk | Get FrontDesk user by ID          |
+| `GET`    | `/active-frontdesks`     | Admin            | List all active FrontDesk users   |
+| `GET`    | `/archived-frontdesks`   | Admin            | List all archived FrontDesk users |
 
 ---
 
@@ -365,10 +369,10 @@ For queries, same structure but in `Query/` instead of `Command/`.
 
 ### Command vs Query
 
-| | Command | Query |
-|---|---|---|
-| Purpose | Writes / state changes | Reads only |
-| Returns | Response DTO or `Unit` | DTO or `List<DTO>` |
+|         | Command                                  | Query                                           |
+| ------- | ---------------------------------------- | ----------------------------------------------- |
+| Purpose | Writes / state changes                   | Reads only                                      |
+| Returns | Response DTO or `Unit`                   | DTO or `List<DTO>`                              |
 | Example | `LoginCommand`, `CreateFrontDeskCommand` | `GetUserByIdQuery`, `GetActiveUsersByRoleQuery` |
 
 ---
@@ -380,6 +384,7 @@ Validation is enforced at the **command level** via `AbstractValidator<TCommand>
 ### Standard Password Rules
 
 All admin-provisioned users (Admin, Frontdesk) require:
+
 - Minimum 10 characters
 - At least one uppercase letter
 - At least one lowercase letter
@@ -405,9 +410,7 @@ Validation failures are thrown as `FluentValidation.ValidationException` and cau
       "Password must contain at least one uppercase letter.",
       "Password must be at least 10 characters long."
     ],
-    "Request.Email": [
-      "Invalid email format"
-    ]
+    "Request.Email": ["Invalid email format"]
   }
 }
 ```
@@ -418,14 +421,14 @@ Validation failures are thrown as `FluentValidation.ValidationException` and cau
 
 All exceptions propagate up to `GlobalExceptionHandler` (`IExceptionHandler`). Controllers contain no try-catch blocks.
 
-| Exception Type | HTTP Status | When Thrown |
-|---|---|---|
-| `ValidationException` | `400` | FluentValidation failures or Identity errors |
-| `ArgumentException` | `400` | Invalid argument |
-| `InvalidOperationException` | `400` | General business rule violations |
-| `UnauthorizedException` | `401` | Auth failures (bad credentials, invalid/expired/reused tokens) |
-| `NotFoundException` | `404` | Entity not found by ID |
-| Unhandled `Exception` | `500` | Unexpected errors (detail hidden from client) |
+| Exception Type              | HTTP Status | When Thrown                                                    |
+| --------------------------- | ----------- | -------------------------------------------------------------- |
+| `ValidationException`       | `400`       | FluentValidation failures or Identity errors                   |
+| `ArgumentException`         | `400`       | Invalid argument                                               |
+| `InvalidOperationException` | `400`       | General business rule violations                               |
+| `UnauthorizedException`     | `401`       | Auth failures (bad credentials, invalid/expired/reused tokens) |
+| `NotFoundException`         | `404`       | Entity not found by ID                                         |
+| Unhandled `Exception`       | `500`       | Unexpected errors (detail hidden from client)                  |
 
 All responses use the [RFC 7807 ProblemDetails](https://datatracker.ietf.org/doc/html/rfc7807) format.
 
@@ -436,14 +439,17 @@ All responses use the [RFC 7807 ProblemDetails](https://datatracker.ietf.org/doc
 Structured logging is provided by **Serilog** and configured in `WebApi/DependencyInjection.cs`.
 
 **Sinks:**
+
 - Console — formatted with `AnsiConsoleTheme.Code`
 - Rolling file — writes to `WebApi/Logs/log-{date}.txt`, rotates daily
 
 **Log levels** (configured in `appsettings.json`):
+
 - `Default`: Information
 - `Microsoft` / `System` / `Microsoft.EntityFrameworkCore`: Warning (suppresses EF SQL noise)
 
 **`LoggingBehavior`** wraps every MediatR command/query and provides:
+
 - `[START]` log on entry with userId and client IP
 - `[END]` log on success with elapsed milliseconds
 - `[SLOW]` warning if elapsed > 500ms
