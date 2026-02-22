@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace WebApi.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/files")]
     public class FilesController : ControllerBase
     {
         private readonly IStorageService _storageService;
