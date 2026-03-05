@@ -8,17 +8,20 @@ namespace Persistence.Seeders
     public class DataSeeder : IDataSeeder
     {
         private readonly UserManager<User> _userManager;
-        private readonly RoleManager<Role> _roleManager; 
+        private readonly RoleManager<Role> _roleManager;
         private readonly ApplicationDbContext _context;
+        private readonly CoworkingSeeder _coworkingSeeder;
 
         public DataSeeder(
             UserManager<User> userManager,
             RoleManager<Role> roleManager,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            CoworkingSeeder coworkingSeeder)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _context = context;
+            _coworkingSeeder = coworkingSeeder;
         }
 
         public async Task SeedAsync()
@@ -28,6 +31,9 @@ namespace Persistence.Seeders
 
             // 2. Seed Admin User
             await SeedAdminUserAsync();
+
+            // 3. Seed Coworking resources and service packages
+            await _coworkingSeeder.SeedAsync();
         }
 
         private async Task SeedRolesAsync()

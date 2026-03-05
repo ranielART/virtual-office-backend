@@ -100,7 +100,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseExceptionHandler();
-
+app.UseRateLimiter();
 
 app.UseStatusCodePages();
 app.UseCors("Cors");
