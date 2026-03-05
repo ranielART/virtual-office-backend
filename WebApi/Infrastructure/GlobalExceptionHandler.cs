@@ -65,6 +65,11 @@ namespace WebApi.Infrastructure
                     problemDetails.Title = "Not Found";
                     break;
 
+                case ConflictException:
+                    problemDetails.Status = StatusCodes.Status409Conflict;
+                    problemDetails.Title = "Conflict";
+                    break;
+
                 case ArgumentException:
                 case InvalidOperationException:
                     problemDetails.Status = StatusCodes.Status400BadRequest;

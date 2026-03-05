@@ -306,7 +306,15 @@ All entities extend `GuidBaseEntity` (existing base class that provides `Id (Gui
 | `TotalAmount` | `decimal` | Final total |
 | `Notes` | `string?` | Internal FrontDesk notes |
 | `CancellationReason` | `string?` | Set on cancel or no-show |
-| `ReminderSentAt` | `DateTime?` | Added in Phase 9 migration |
+| `ReminderSentAt` | `DateTime?` | Set by no-show reminder job (Phase 9). Included in initial schema to avoid a surprise migration mid-project. |
+| `EndingReminderSentAt` | `DateTime?` | Set by session-ending reminder job (Phase 10). Included in initial schema for the same reason. |
+
+**Concurrency Token:**
+Add PostgreSQL `xmin` as a concurrency token on `Booking`. This provides optimistic concurrency at the ORM level as a second line of defense — if two transactions both read the same booking row and one commits first, EF Core will throw a `DbUpdateConcurrencyException` on the second, preventing silent overwrites.
+```csharp
+// In BookingConfiguration.cs:
+builder.Property<uint>("xmin").IsRowVersion();
+```
 
 **Domain Methods (state transitions — handlers must use these, not direct field mutation):**
 ```csharp
@@ -605,13 +613,15 @@ This SQL logic is the heart of every availability check in the system. It is use
 ```sql
 SELECT COUNT(*) FROM bookings
 WHERE resource_id = @ResourceId
-  AND booking_status NOT IN ('Cancelled', 'NoShow', 'CheckedOut')
+  AND booking_status NOT IN ('Cancelled', 'NoShow', 'CheckedOut', 'Overstayed')
   AND scheduled_start < @RequestedEnd
   AND scheduled_end   > @RequestedStart
 ```
 
 - `COUNT = 0` → resource is **available** for the requested window
 - `COUNT > 0` → resource is **unavailable** (an active booking overlaps)
+
+> **Why `Overstayed` is excluded:** `Overstayed` is set at the moment `ProcessWalkInTimeOutCommand` is called — meaning the guest has physically checked out. The booking remains in `Overstayed` until the overstay payment clears and transitions to `CheckedOut`. Without this exclusion, a departed overstayed guest would incorrectly block the resource from new bookings.
 
 The EF Core equivalent inside the query handler:
 ```csharp
@@ -621,6 +631,7 @@ var isUnavailable = await _dbContext.Bookings
         b.BookingStatus != BookingStatus.Cancelled &&
         b.BookingStatus != BookingStatus.NoShow &&
         b.BookingStatus != BookingStatus.CheckedOut &&
+        b.BookingStatus != BookingStatus.Overstayed &&
         b.ScheduledStart < requestedEnd &&
         b.ScheduledEnd   > requestedStart,
         cancellationToken);
@@ -801,8 +812,35 @@ public void MarkNoShow()
 Steps executed by the handler:
 1. Verify resource exists and `IsActive = true` (throw `NotFoundException` if not)
 2. Verify service package exists and `IsActive = true` (throw `NotFoundException` if not)
-3. Re-check availability via the algorithm from Phase 3 inside a DB transaction (prevents double-booking even for walk-ins)
-4. Generate `ReferenceNumber`: `$"BKG-{(await _dbContext.Bookings.CountAsync() + 1):D4}"`
+3. Re-check availability inside a DB transaction (prevents double-booking even for walk-ins):
+   ```csharp
+   await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+   try
+   {
+       // Re-run availability check — if COUNT > 0, throw ConflictException
+       // Insert BookingGuest + Booking
+       await _dbContext.SaveChangesAsync(cancellationToken);
+       await transaction.CommitAsync(cancellationToken);
+   }
+   catch
+   {
+       await transaction.RollbackAsync(cancellationToken);
+       throw;
+   }
+   ```
+4. Generate `ReferenceNumber` using a PostgreSQL sequence (race-safe):
+   ```sql
+   -- Added in the CoworkingInitialSchema migration:
+   migrationBuilder.Sql("CREATE SEQUENCE booking_ref_seq START 1;");
+   ```
+   ```csharp
+   // In the command handler:
+   var nextVal = await _dbContext.Database
+       .SqlQuery<long>($"SELECT nextval('booking_ref_seq')")
+       .FirstAsync(cancellationToken);
+   var referenceNumber = $"BKG-{nextVal:D4}";
+   ```
+   > **Why not `COUNT + 1`:** Under concurrent load, two requests can read the same `COUNT` and generate duplicate reference numbers. Since `ReferenceNumber` has a unique index, one insert would fail with a database exception. A PostgreSQL sequence issues a strictly sequential, atomic value — no two calls ever receive the same number, regardless of concurrency.
 5. Create `BookingGuest` with `FirstName`, `LastName`, `Phone`
    - Walk-in with student: `IsStudentVerified = true` immediately (physical ID presented)
 6. Freeze price snapshot:
@@ -815,8 +853,15 @@ Steps executed by the handler:
 7. Compute pricing:
    ```
    BaseAmount      = package is Hourly ? EstimatedHours × PricePerUnit : PricePerUnit (flat)
-   DiscountAmount  = 0  (student discount deferred to Phase 8)
-   TotalAmount     = BaseAmount
+
+   // Walk-in student discount is applied HERE (not deferred to Phase 8)
+   // because IsStudentVerified = true is set in step 6 — physical ID is already confirmed.
+   // Phase 8 only adds the online ID upload + FrontDesk verification workflow.
+   DiscountAmount  = IsStudent && IsStudentVerified && servicePackage.IsStudentEligible
+                       ? BaseAmount × (servicePackage.StudentDiscountPercent / 100)
+                       : 0
+
+   TotalAmount     = BaseAmount - DiscountAmount
    BalanceAmount   = TotalAmount  (walk-ins: no downpayment split)
    DownpaymentAmount = 0
    ```
@@ -831,7 +876,15 @@ Steps executed by the handler:
    FrontDeskUserId = userId from JWT
    ```
 
-> **SnapshotHourlyRate for flat packages:** This is used for overstay/extension billing. For flat packages (DayPass, HalfDay, etc.), derive the equivalent hourly rate: `PriceAmount / DurationHours`. Store this on the `ServicePackage` as `HourlyEquivalentRate` or compute it in the snapshot step. For meeting rooms, use the explicit hourly package rate (₱800/hr for Executive, ₱1,500/hr for Collaboration).
+> **SnapshotHourlyRate — committed decision:** Always compute and freeze at snapshot time. Do NOT add a field to `ServicePackage` — that would tie the rate to a live config value that can change, breaking historical overstay/extension accuracy.
+>
+> | Package Type | SnapshotHourlyRate formula |
+> |---|---|
+> | `Hourly` | `= ServicePackage.PriceAmount` (already a per-hour rate) |
+> | `DayPass`, `HalfDay`, `FullDay`, `WeeklyPass` | `= ServicePackage.PriceAmount / ServicePackage.DurationHours` |
+> | `MonthlyDedicatedDesk` | `= ServicePackage.PriceAmount / (ServicePackage.DurationDays * 8)` (assume 8hr workday) |
+>
+> For meeting rooms, always look up the Hourly package rate for the same `ResourceType` (e.g., Executive Room Hourly = ₱800, Collaboration Room Hourly = ₱1,500) and use that as `SnapshotHourlyRate` regardless of which flat package was booked. The handler resolves this by querying the active Hourly package for the resource type during snapshot creation.
 
 ---
 
@@ -877,6 +930,11 @@ Steps:
    - Sum all `BookingPayment.Amount` for this booking
    - If total paid ≥ `TotalAmount` → `FullyPaid`
    - If total paid > 0 and total paid < `TotalAmount` → `PartiallyPaid`
+5. **If `PaymentStatus` just became `FullyPaid` AND `BookingStatus == Overstayed`:**
+   ```csharp
+   booking.BookingStatus = BookingStatus.CheckedOut;
+   ```
+   > A booking in `Overstayed` means the guest physically left but had an unpaid overstay fee. Once fully paid, the booking must resolve to `CheckedOut` — otherwise it stays in `Overstayed` indefinitely and (without the fix from suggestion #2) would block the resource in the availability query.
 
 ---
 
@@ -1020,7 +1078,7 @@ Auth: `[Authorize(Roles = "Admin,Frontdesk")]` on the entire controller
 
 - `ProcessPaymentCommand` for Phase 4 only accepts `Cash` and `Card`. Attempts to use `GCash`, `Maya`, `BankTransfer`, or `Paymongo` return HTTP 409 with a message directing to the proof upload endpoint (which will exist in Phase 5).
 - No email notifications are sent in this phase.
-- Student discount is stored as `IsStudent = true` on the booking but `DiscountAmount = 0` until Phase 8 wires the verification flow.
+- Walk-in student discount **is applied in this phase** — `IsStudentVerified = true` is set immediately on physical ID presentation, so the discount is computed at time-in. Phase 8 adds the online ID upload + FrontDesk verification workflow for online bookings only.
 
 ### 4.9 — Exit Criteria
 
@@ -1816,11 +1874,7 @@ Automate the no-show policy with a scheduled background job. This phase introduc
 
 ### Database Changes
 
-Add `ReminderSentAt (DateTime? nullable)` to the `bookings` table.
-
-Migration name: `AddReminderSentAtToBookings`
-
-This field prevents duplicate reminder emails from being sent if the job runs multiple times before the guest checks in.
+None. `ReminderSentAt` is included in `CoworkingInitialSchema` (Phase 1) to avoid a surprise mid-project migration. No new migration is needed here.
 
 ---
 
@@ -2076,11 +2130,7 @@ Allow FrontDesk to extend an active guest session when more time is needed. This
 
 ### Database Changes
 
-Add `EndingReminderSentAt (DateTime? nullable)` to the `bookings` table.
-
-Migration name: `AddEndingReminderSentAtToBookings`
-
-This field prevents duplicate pre-end alerts for the same booking.
+None. `EndingReminderSentAt` is included in `CoworkingInitialSchema` (Phase 1) alongside `ReminderSentAt`. No new migration is needed here.
 
 ---
 
@@ -2308,7 +2358,8 @@ public interface IPaymongoService
         CancellationToken cancellationToken);
 
     bool VerifyWebhookSignature(string rawPayload, string signatureHeader);
-    string ExtractBookingIdFromPayload(string rawPayload);
+    string ExtractEventIdFromPayload(string rawPayload);      // data.id — used as idempotency key
+    string ExtractBookingIdFromPayload(string rawPayload);    // data.attributes.metadata.bookingId
     bool IsPaymentSuccessful(string rawPayload);
 }
 ```
@@ -2391,18 +2442,39 @@ public async Task<IActionResult> PaymongoWebhook()
     if (!_paymongoService.IsPaymentSuccessful(rawPayload))
         return Ok();   // Acknowledge non-payment events without processing
 
-    // 4. Extract booking ID from metadata
+    // 4. Extract Paymongo event ID for idempotency check
+    var eventId = _paymongoService.ExtractEventIdFromPayload(rawPayload);
+
+    // 5. Idempotency guard — check if this event was already processed
+    if (await _dbContext.BookingPayments.AnyAsync(p => p.ExternalPaymentRef == eventId))
+        return Ok(); // Duplicate webhook delivery — already processed
+
+    // 6. Extract booking ID from metadata
     var bookingId = _paymongoService.ExtractBookingIdFromPayload(rawPayload);
 
-    // 5. Dispatch ConfirmDownpaymentCommand
-    await _mediator.Send(new ConfirmDownpaymentCommand(Guid.Parse(bookingId), paymentId));
+    // 7. Find the BookingPayment placeholder created by CreatePaymentIntentCommand
+    var bookingPayment = await _dbContext.BookingPayments
+        .FirstOrDefaultAsync(p =>
+            p.BookingId == Guid.Parse(bookingId) &&
+            p.PaymentMethod == PaymentMethod.Paymongo &&
+            p.PaidAt == null);
+
+    if (bookingPayment == null)
+        return Ok(); // No matching pending payment — log and ignore
+
+    // 8. Stamp the Paymongo event ID before confirming (persists before the command runs)
+    bookingPayment.ExternalPaymentRef = eventId;
+    await _dbContext.SaveChangesAsync();
+
+    // 9. Dispatch ConfirmDownpaymentCommand using the resolved BookingPayment ID
+    await _mediator.Send(new ConfirmDownpaymentCommand(Guid.Parse(bookingId), bookingPayment.Id));
 
     // Always return 200 — Paymongo retries on non-2xx
     return Ok();
 }
 ```
 
-**Idempotency:** `ConfirmDownpaymentCommand` already guards against confirming a booking that is already `Confirmed` or beyond. Paymongo may deliver the same webhook event multiple times — the guard ensures only the first delivery has any effect.
+**Idempotency:** The webhook handler stores the Paymongo event ID (`data.id`) in `ExternalPaymentRef` before dispatching `ConfirmDownpaymentCommand`. On any subsequent delivery of the same event, the handler checks `AnyAsync(p => p.ExternalPaymentRef == eventId)` and returns `200 OK` immediately without reprocessing. This is more robust than relying on booking status alone — a future status change between `Confirmed` and webhook delivery would not break the guard.
 
 ---
 
@@ -2497,13 +2569,34 @@ These features are excluded from all 11 phases. The schema and command structure
 
 ---
 
+## Recommended Enhancements (Not In Current Phases)
+
+These were reviewed but deliberately kept out of the phase plan to preserve scope. Discuss with the team before adding.
+
+### Phase 0 — Test Infrastructure
+Consider inserting a **Phase 0** before Phase 1 to establish the testing foundation:
+- xUnit project with `Testcontainers` for a real PostgreSQL test database
+- `WebApplicationFactory` integration test base class
+- One smoke test: `GET /health` returns 200
+
+Every phase's exit criteria currently reference manual Swagger testing. With Phase 0, each exit criterion becomes an automated integration test that runs in CI. This investment pays off throughout all 11 phases.
+
+### Phase 7 Split (7a / 7b)
+Phase 7 currently combines downpayment confirmation + email sending in one phase. Email introduces an external SMTP dependency that can fail silently.
+
+Consider splitting:
+- **Phase 7a:** Downpayment confirmation + booking status transitions (no email)
+- **Phase 7b:** All email notifications (confirmation, reminder, discount rejection)
+
+This makes email failures non-blocking for the booking flow and each sub-phase independently deployable. Trade-off: increases total phase count to 12 and renumbers Phases 8–11.
+
+---
+
 ## Migration Reference
 
 | Migration Name | Phase | What It Adds |
 |---|---|---|
-| `CoworkingInitialSchema` | Phase 1 | All 6 coworking tables |
-| `AddReminderSentAtToBookings` | Phase 9 | `bookings.reminder_sent_at` |
-| `AddEndingReminderSentAtToBookings` | Phase 10 | `bookings.ending_reminder_sent_at` |
+| `CoworkingInitialSchema` | Phase 1 | All 6 coworking tables, PostgreSQL `booking_ref_seq` sequence, `reminder_sent_at` and `ending_reminder_sent_at` on `bookings` (added upfront to avoid mid-project surprise migrations) |
 | `AddExternalPaymentRefToBookingPayments` | Phase 11 | `booking_payments.external_payment_ref` |
 
 All migrations use the naming convention `dotnet ef migrations add {MigrationName} --project Persistence --startup-project WebApi`.
