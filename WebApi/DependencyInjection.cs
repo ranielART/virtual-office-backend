@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using WebApi.Infrastructure;
 
@@ -16,7 +17,10 @@ namespace DependencyInjection
 
         public static IServiceCollection AddWebApi(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddControllers();
+            services.AddControllers()
+                .AddJsonOptions(options =>
+                    options.JsonSerializerOptions.Converters.Add(
+                        new JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.SnakeCaseLower)));
             services.AddEndpointsApiExplorer();
 
 

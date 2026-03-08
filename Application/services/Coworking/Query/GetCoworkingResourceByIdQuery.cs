@@ -37,7 +37,6 @@ namespace Application.Services.Coworking.Query
                 Capacity = resource.Capacity,
                 Description = resource.Description,
                 IsActive = resource.IsActive,
-                SortOrder = resource.SortOrder,
                 CreatedAt = resource.CreatedAt,
                 UpdatedAt = resource.UpdatedAt
             };

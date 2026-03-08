@@ -72,10 +72,10 @@ namespace Application.Services.User.Command
 
             return new LoginResponse
             {
-                UserId = user.Id,
-                Email = user.Email!,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
+                //UserId = user.Id,
+                //Email = user.Email!,
+                //FirstName = user.FirstName,
+                //LastName = user.LastName,
                 AccessToken = accessToken,
                 RefreshToken = refreshToken.Token
             };

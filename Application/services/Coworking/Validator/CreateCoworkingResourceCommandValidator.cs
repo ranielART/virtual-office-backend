@@ -18,9 +18,6 @@ namespace Application.Services.Coworking.Validator
 
             RuleFor(x => x.Request.Capacity)
                 .GreaterThanOrEqualTo(1).WithMessage("Capacity must be at least 1.");
-
-            RuleFor(x => x.Request.SortOrder)
-                .GreaterThanOrEqualTo(0).WithMessage("Sort order must be 0 or greater.");
         }
     }
 }

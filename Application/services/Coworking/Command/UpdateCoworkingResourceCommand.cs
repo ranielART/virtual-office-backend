@@ -52,7 +52,6 @@ namespace Application.Services.Coworking.Command
 
             if (req.Capacity.HasValue) resource.Capacity = req.Capacity.Value;
             if (req.Description is not null) resource.Description = req.Description;
-            if (req.SortOrder.HasValue) resource.SortOrder = req.SortOrder.Value;
 
             resource.UpdatedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync(cancellationToken);
@@ -65,7 +64,6 @@ namespace Application.Services.Coworking.Command
                 Capacity = resource.Capacity,
                 Description = resource.Description,
                 IsActive = resource.IsActive,
-                SortOrder = resource.SortOrder,
                 CreatedAt = resource.CreatedAt,
                 UpdatedAt = resource.UpdatedAt
             };

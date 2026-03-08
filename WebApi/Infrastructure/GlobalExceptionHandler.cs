@@ -37,7 +37,7 @@ namespace WebApi.Infrastructure
             // 3. Handle Specific Exception Types
             switch (exception)
             {
-                // 👇 HANDLE VALIDATION ERRORS HERE
+                // HANDLE VALIDATION ERRORS HERE
                 case ValidationException validationException:
                     problemDetails.Status = StatusCodes.Status400BadRequest;
                     problemDetails.Title = "Validation Failed";
