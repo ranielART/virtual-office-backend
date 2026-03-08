@@ -97,6 +97,8 @@ Phase 1 establishes the entire data model, database schema, and infrastructure n
 
 Enums are defined in `Domain/Enum/` and are the shared vocabulary for the entire module. All enum values are assigned explicit integer values so that stored database integers remain stable even if enum members are reordered.
 
+> **API Serialization:** In API requests and responses, all enum values are serialized as **snake_case strings** (e.g., `"coworking_seats"`, `"hourly"`, `"day_pass"`) rather than integers. The database still stores integer values internally. This is configured globally via `JsonStringEnumConverter` with `SnakeCaseLower` naming policy.
+
 ---
 
 #### `ResourceType`
@@ -111,6 +113,8 @@ public enum ResourceType
     CollaborationRoom = 3   // Large meeting/event room (max 20 pax)
 }
 ```
+
+**API string values:** `"coworking_seats"` · `"executive_room"` · `"collaboration_room"`
 
 Used on both `CoworkingResource` and `ServicePackage` to associate packages with the correct space type. It is also used as a query filter on both admin list endpoints.
 
@@ -131,6 +135,8 @@ public enum PackageType
     MonthlyDedicatedDesk = 6  // 30 days, dedicated seat assignment
 }
 ```
+
+**API string values:** `"hourly"` · `"day_pass"` · `"half_day"` · `"full_day"` · `"weekly_pass"` · `"monthly_dedicated_desk"`
 
 Flat packages (`HalfDay`, `FullDay`, `DayPass`, `WeeklyPass`, `MonthlyDedicatedDesk`) have a fixed `PriceAmount` regardless of actual hours used within the block. `Hourly` packages are metered — each hour consumes `PriceAmount` from the balance.
 
@@ -264,7 +270,6 @@ Properties:
   Capacity     — Maximum number of people the space can hold
   Description  — Optional human-readable notes
   IsActive     — Whether the resource is currently available for booking
-  SortOrder    — Controls display order in the admin UI
 
 Navigations:
   Bookings        — All bookings made for this resource
@@ -496,8 +501,8 @@ Seeds the initial coworking resources and service packages on first run. The see
 
 **`SeedResourcesAsync()`** creates:
 - 20 individual coworking seats (Seat 01 through Seat 20), each with `Capacity = 1`
-- Executive Room — `Capacity = 3`, `SortOrder = 21`
-- Collaboration Room — `Capacity = 20`, `SortOrder = 22`
+- Executive Room — `Capacity = 3`
+- Collaboration Room — `Capacity = 20`
 
 **`SeedServicePackagesAsync()`** creates 11 service packages:
 
@@ -617,10 +622,9 @@ Phase 2 exposes a full admin API for managing coworking resources and service pa
 **`CreateCoworkingResourceRequest`** — Required fields for a new resource:
 ```
 Name         — Resource display name (required, max 100 chars)
-ResourceType — Space category (required, must be valid enum value)
+ResourceType — Space category (required, must be valid enum string value)
 Capacity     — Max headcount (required, min 1)
 Description  — Optional notes
-SortOrder    — Display position (required, min 0)
 ```
 
 **`UpdateCoworkingResourceRequest`** — All fields are optional. Only provided fields are updated (partial update pattern). `ResourceType` is intentionally excluded — the type of a resource cannot be changed after creation as existing bookings and packages rely on it.
@@ -628,7 +632,6 @@ SortOrder    — Display position (required, min 0)
 Name?        — New display name
 Capacity?    — New max headcount
 Description? — New notes
-SortOrder?   — New display position
 ```
 
 **`CreateServicePackageRequest`** — Required fields for a new package:
@@ -658,7 +661,7 @@ StudentDiscountPercent? DownpaymentPercent?
 
 **`CoworkingResourceResponse`** — Returned by all resource reads/writes:
 ```
-Id, Name, ResourceType, Capacity, Description, IsActive, SortOrder, CreatedAt, UpdatedAt
+Id, Name, ResourceType, Capacity, Description, IsActive, CreatedAt, UpdatedAt
 ```
 
 **`ServicePackageResponse`** — Returned by all package reads/writes:
@@ -757,7 +760,7 @@ Returns a filtered, ordered list of all coworking resources.
 - `ResourceType?` — Return only resources of a specific type
 - `IsActive?` — Return only active or only inactive resources; omit to return both
 
-**Ordering:** `SortOrder ASC`, then `Name ASC` as a tiebreaker.
+**Ordering:** `Name ASC`.
 
 ---
 
@@ -800,9 +803,8 @@ Validates the `CreateCoworkingResourceCommand`. All fields are required on creat
 | Field | Rules |
 |-------|-------|
 | `Request.Name` | Not empty, max 100 characters |
-| `Request.ResourceType` | Must be a valid `ResourceType` enum value |
+| `Request.ResourceType` | Must be a valid `ResourceType` enum string (e.g., `"coworking_seats"`) |
 | `Request.Capacity` | Must be ≥ 1 |
-| `Request.SortOrder` | Must be ≥ 0 |
 
 ---
 
@@ -815,7 +817,6 @@ Validates the `UpdateCoworkingResourceCommand`. Fields are optional — rules on
 | `Id` | Always | Not empty (Guid must be provided) |
 | `Request.Name` | Only if provided (not null) | Not empty, max 100 characters |
 | `Request.Capacity` | Only if provided (HasValue) | Must be ≥ 1 |
-| `Request.SortOrder` | Only if provided (HasValue) | Must be ≥ 0 |
 
 ---
 
@@ -826,8 +827,8 @@ Validates the `CreateServicePackageCommand`.
 | Field | Rules |
 |-------|-------|
 | `Request.Name` | Not empty, max 150 characters |
-| `Request.ResourceType` | Valid enum value |
-| `Request.PackageType` | Valid enum value |
+| `Request.ResourceType` | Valid enum string (e.g., `"coworking_seats"`) |
+| `Request.PackageType` | Valid enum string (e.g., `"hourly"`) |
 | `Request.PriceAmount` | Must be > 0 |
 | `Request.StudentDiscountPercent` | Must be between 0 and 100 (inclusive) |
 | `Request.DownpaymentPercent` | Must be between 0 and 100 (inclusive) |
@@ -938,10 +939,9 @@ All endpoints are under `api/coworking/admin` and require `Authorization: Bearer
 ```json
 {
   "name": "Seat 21",
-  "resourceType": 1,
+  "resourceType": "coworking_seats",
   "capacity": 1,
-  "description": "Newly added seat near the window.",
-  "sortOrder": 23
+  "description": "Newly added seat near the window."
 }
 ```
 
@@ -969,8 +969,8 @@ All endpoints are under `api/coworking/admin` and require `Authorization: Bearer
 ```json
 {
   "name": "Day Pass",
-  "resourceType": 1,
-  "packageType": 2,
+  "resourceType": "coworking_seats",
+  "packageType": "day_pass",
   "priceAmount": 600.00,
   "durationHours": 10,
   "isStudentEligible": true,
@@ -981,22 +981,26 @@ All endpoints are under `api/coworking/admin` and require `Authorization: Bearer
 
 ### `ResourceType` Enum Values
 
-| Value | Integer |
-|-------|---------|
-| CoworkingSeats | 1 |
-| ExecutiveRoom | 2 |
-| CollaborationRoom | 3 |
+Use the **string** value in all API requests and responses.
+
+| Enum Name | API String Value |
+|-----------|-----------------|
+| `CoworkingSeats` | `"coworking_seats"` |
+| `ExecutiveRoom` | `"executive_room"` |
+| `CollaborationRoom` | `"collaboration_room"` |
 
 ### `PackageType` Enum Values
 
-| Value | Integer |
-|-------|---------|
-| Hourly | 1 |
-| DayPass | 2 |
-| HalfDay | 3 |
-| FullDay | 4 |
-| WeeklyPass | 5 |
-| MonthlyDedicatedDesk | 6 |
+Use the **string** value in all API requests and responses.
+
+| Enum Name | API String Value |
+|-----------|-----------------|
+| `Hourly` | `"hourly"` |
+| `DayPass` | `"day_pass"` |
+| `HalfDay` | `"half_day"` |
+| `FullDay` | `"full_day"` |
+| `WeeklyPass` | `"weekly_pass"` |
+| `MonthlyDedicatedDesk` | `"monthly_dedicated_desk"` |
 
 ### Error Responses
 
@@ -1068,55 +1072,51 @@ Authorization: Bearer <token>
 
 **Expected response — `200 OK`:**
 
-An array of 22 objects. The first 20 are individual seats (`resourceType: 1`), followed by the Executive Room (`resourceType: 2`) and Collaboration Room (`resourceType: 3`). Abbreviated example:
+An array of 22 objects ordered by name. Abbreviated example:
 
 ```json
 [
   {
+    "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    "name": "Collaboration Room",
+    "resourceType": "collaboration_room",
+    "capacity": 20,
+    "description": "Large collaboration meeting room. Maximum 20 pax.",
+    "isActive": true,
+    "createdAt": "2026-03-06T08:00:00Z",
+    "updatedAt": "2026-03-06T08:00:00Z"
+  },
+  {
+    "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    "name": "Executive Room",
+    "resourceType": "executive_room",
+    "capacity": 3,
+    "description": "Private executive meeting room. Maximum 3 pax.",
+    "isActive": true,
+    "createdAt": "2026-03-06T08:00:00Z",
+    "updatedAt": "2026-03-06T08:00:00Z"
+  },
+  {
     "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "name": "Seat 01",
-    "resourceType": 1,
+    "resourceType": "coworking_seats",
     "capacity": 1,
     "description": "Individual coworking seat #01",
     "isActive": true,
-    "sortOrder": 1,
     "createdAt": "2026-03-06T08:00:00Z",
     "updatedAt": "2026-03-06T08:00:00Z"
   },
   {
     "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
     "name": "Seat 02",
-    "resourceType": 1,
+    "resourceType": "coworking_seats",
     "capacity": 1,
     "description": "Individual coworking seat #02",
     "isActive": true,
-    "sortOrder": 2,
-    "createdAt": "2026-03-06T08:00:00Z",
-    "updatedAt": "2026-03-06T08:00:00Z"
-  },
-  // ... seats 03–20 ...
-  {
-    "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
-    "name": "Executive Room",
-    "resourceType": 2,
-    "capacity": 3,
-    "description": "Private executive meeting room. Maximum 3 pax.",
-    "isActive": true,
-    "sortOrder": 21,
-    "createdAt": "2026-03-06T08:00:00Z",
-    "updatedAt": "2026-03-06T08:00:00Z"
-  },
-  {
-    "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
-    "name": "Collaboration Room",
-    "resourceType": 3,
-    "capacity": 20,
-    "description": "Large collaboration meeting room. Maximum 20 pax.",
-    "isActive": true,
-    "sortOrder": 22,
     "createdAt": "2026-03-06T08:00:00Z",
     "updatedAt": "2026-03-06T08:00:00Z"
   }
+  // ... seats 03–20 ...
 ]
 ```
 
@@ -1141,10 +1141,9 @@ Content-Type: application/json
 ```json
 {
   "name": "Seat 21",
-  "resourceType": 1,
+  "resourceType": "coworking_seats",
   "capacity": 1,
-  "description": "Additional seat added after launch. Near the power strip wall.",
-  "sortOrder": 23
+  "description": "Additional seat added after launch. Near the power strip wall."
 }
 ```
 
@@ -1153,11 +1152,10 @@ Content-Type: application/json
 {
   "id": "e5f6a7b8-c9d0-1234-efab-345678901234",
   "name": "Seat 21",
-  "resourceType": 1,
+  "resourceType": "coworking_seats",
   "capacity": 1,
   "description": "Additional seat added after launch. Near the power strip wall.",
   "isActive": true,
-  "sortOrder": 23,
   "createdAt": "2026-03-06T09:15:00Z",
   "updatedAt": "2026-03-06T09:15:00Z"
 }
@@ -1180,10 +1178,9 @@ Content-Type: application/json
 ```json
 {
   "name": "Executive Room B",
-  "resourceType": 2,
+  "resourceType": "executive_room",
   "capacity": 4,
-  "description": "Second private executive room on the second floor.",
-  "sortOrder": 24
+  "description": "Second private executive room on the second floor."
 }
 ```
 
@@ -1192,11 +1189,10 @@ Content-Type: application/json
 {
   "id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
   "name": "Executive Room B",
-  "resourceType": 2,
+  "resourceType": "executive_room",
   "capacity": 4,
   "description": "Second private executive room on the second floor.",
   "isActive": true,
-  "sortOrder": 24,
   "createdAt": "2026-03-06T09:16:00Z",
   "updatedAt": "2026-03-06T09:16:00Z"
 }
@@ -1217,10 +1213,9 @@ Content-Type: application/json
 ```json
 {
   "name": "Seat 01",
-  "resourceType": 1,
+  "resourceType": "coworking_seats",
   "capacity": 1,
-  "description": "Duplicate attempt.",
-  "sortOrder": 99
+  "description": "Duplicate attempt."
 }
 ```
 
@@ -1249,9 +1244,8 @@ Content-Type: application/json
 ```json
 {
   "name": "",
-  "resourceType": 99,
-  "capacity": 0,
-  "sortOrder": -5
+  "resourceType": "invalid_type",
+  "capacity": 0
 }
 ```
 
@@ -1264,8 +1258,7 @@ Content-Type: application/json
   "errors": {
     "Request.Name": ["Resource name is required."],
     "Request.ResourceType": ["Invalid resource type."],
-    "Request.Capacity": ["Capacity must be at least 1."],
-    "Request.SortOrder": ["Sort order must be 0 or greater."]
+    "Request.Capacity": ["Capacity must be at least 1."]
   }
 }
 ```
@@ -1285,9 +1278,8 @@ Content-Type: application/json
 ```json
 {
   "name": "This resource name is intentionally way too long and should be rejected because it exceeds one hundred characters total",
-  "resourceType": 1,
-  "capacity": 1,
-  "sortOrder": 0
+  "resourceType": "coworking_seats",
+  "capacity": 1
 }
 ```
 
@@ -1320,11 +1312,10 @@ Authorization: Bearer <token>
 {
   "id": "{seat-21-id}",
   "name": "Seat 21",
-  "resourceType": 1,
+  "resourceType": "coworking_seats",
   "capacity": 1,
   "description": "Additional seat added after launch. Near the power strip wall.",
   "isActive": true,
-  "sortOrder": 23,
   "createdAt": "2026-03-06T09:15:00Z",
   "updatedAt": "2026-03-06T09:15:00Z"
 }
@@ -1356,7 +1347,7 @@ Authorization: Bearer <token>
 
 #### R-08 — Get All Resources (No Filter)
 
-Returns all resources, ordered by `sortOrder` then `name`.
+Returns all resources, ordered by `name` ascending.
 
 **Request:**
 ```
@@ -1366,7 +1357,7 @@ Authorization: Bearer <token>
 
 **Expected response — `200 OK`:**
 
-An array of all resources currently in the database (at minimum the 22 seeded + the 2 created in R-01 and R-02 = 24 total, if tests ran in order). Items are sorted by `sortOrder ASC`.
+An array of all resources currently in the database (at minimum the 22 seeded + the 2 created in R-01 and R-02 = 24 total, if tests ran in order). Items are sorted by `name ASC`.
 
 ---
 
@@ -1376,13 +1367,13 @@ Returns only coworking seats.
 
 **Request:**
 ```
-GET https://localhost:7000/api/coworking/admin/resources?resourceType=1
+GET https://localhost:7000/api/coworking/admin/resources?resourceType=coworking_seats
 Authorization: Bearer <token>
 ```
 
 **Expected response — `200 OK`:**
 
-Array containing only resources with `resourceType: 1`. After seeding + R-01, this should be 21 items (Seat 01–21).
+Array containing only resources with `resourceType: "coworking_seats"`. After seeding + R-01, this should be 21 items (Seat 01–21).
 
 ---
 
@@ -1408,7 +1399,7 @@ Returns only active coworking seats.
 
 **Request:**
 ```
-GET https://localhost:7000/api/coworking/admin/resources?resourceType=1&isActive=true
+GET https://localhost:7000/api/coworking/admin/resources?resourceType=coworking_seats&isActive=true
 Authorization: Bearer <token>
 ```
 
@@ -1420,7 +1411,7 @@ Array of coworking seats where `isActive` is `true`.
 
 #### R-12 — Update Resource (Success — Partial)
 
-Updates only the `description` and `sortOrder` of Seat 21. Name and capacity remain unchanged.
+Updates only the `description` of Seat 21. Name and capacity remain unchanged.
 
 **Request:**
 ```
@@ -1430,8 +1421,7 @@ Content-Type: application/json
 ```
 ```json
 {
-  "description": "Corner seat near the window. Best natural lighting.",
-  "sortOrder": 25
+  "description": "Corner seat near the window. Best natural lighting."
 }
 ```
 
@@ -1440,11 +1430,10 @@ Content-Type: application/json
 {
   "id": "{seat-21-id}",
   "name": "Seat 21",
-  "resourceType": 1,
+  "resourceType": "coworking_seats",
   "capacity": 1,
   "description": "Corner seat near the window. Best natural lighting.",
   "isActive": true,
-  "sortOrder": 25,
   "createdAt": "2026-03-06T09:15:00Z",
   "updatedAt": "2026-03-06T09:20:00Z"
 }
@@ -1475,11 +1464,10 @@ Content-Type: application/json
 {
   "id": "{seat-21-id}",
   "name": "Window Seat",
-  "resourceType": 1,
+  "resourceType": "coworking_seats",
   "capacity": 1,
   "description": "Corner seat near the window. Best natural lighting.",
   "isActive": true,
-  "sortOrder": 25,
   "createdAt": "2026-03-06T09:15:00Z",
   "updatedAt": "2026-03-06T09:22:00Z"
 }
@@ -1661,7 +1649,7 @@ Authorization: Bearer <token>
 
 This scenario cannot be fully tested until Phase 3 (walk-in check-in) is implemented, since it requires a booking with `BookingStatus = CheckedIn` to be present. The expected behavior when that condition is met is documented here for reference.
 
-**Precondition:** A booking for resource `{seat-21-id}` exists with `BookingStatus = 4 (CheckedIn)`.
+**Precondition:** A booking for resource `{seat-21-id}` exists with `BookingStatus = CheckedIn`.
 
 **Request:**
 ```
@@ -1698,8 +1686,8 @@ Content-Type: application/json
 ```json
 {
   "name": "Evening Hourly",
-  "resourceType": 1,
-  "packageType": 1,
+  "resourceType": "coworking_seats",
+  "packageType": "hourly",
   "priceAmount": 45.00,
   "durationHours": null,
   "durationDays": null,
@@ -1715,8 +1703,8 @@ Content-Type: application/json
 {
   "id": "a1a1a1a1-b2b2-c3c3-d4d4-e5e5e5e5e5e5",
   "name": "Evening Hourly",
-  "resourceType": 1,
-  "packageType": 1,
+  "resourceType": "coworking_seats",
+  "packageType": "hourly",
   "priceAmount": 45.00,
   "durationHours": null,
   "durationDays": null,
@@ -1747,8 +1735,8 @@ Content-Type: application/json
 ```json
 {
   "name": "Collaboration Room — Morning Half Day",
-  "resourceType": 3,
-  "packageType": 3,
+  "resourceType": "collaboration_room",
+  "packageType": "half_day",
   "priceAmount": 4800.00,
   "durationHours": 4,
   "durationDays": null,
@@ -1764,8 +1752,8 @@ Content-Type: application/json
 {
   "id": "b2b2b2b2-c3c3-d4d4-e5e5-f6f6f6f6f6f6",
   "name": "Collaboration Room — Morning Half Day",
-  "resourceType": 3,
-  "packageType": 3,
+  "resourceType": "collaboration_room",
+  "packageType": "half_day",
   "priceAmount": 4800.00,
   "durationHours": 4,
   "durationDays": null,
@@ -1783,7 +1771,7 @@ Content-Type: application/json
 
 #### P-03 — Create Package (Success — Same Name, Different ResourceType)
 
-Verifies that name uniqueness is scoped per `resourceType`. "Evening Hourly" already exists for `resourceType: 1` (CoworkingSeats), but it can be created for `resourceType: 2` (ExecutiveRoom).
+Verifies that name uniqueness is scoped per `resourceType`. "Evening Hourly" already exists for `"coworking_seats"`, but it can be created for `"executive_room"`.
 
 **Request:**
 ```
@@ -1794,8 +1782,8 @@ Content-Type: application/json
 ```json
 {
   "name": "Evening Hourly",
-  "resourceType": 2,
-  "packageType": 1,
+  "resourceType": "executive_room",
+  "packageType": "hourly",
   "priceAmount": 700.00,
   "durationHours": null,
   "durationDays": null,
@@ -1811,8 +1799,8 @@ Content-Type: application/json
 {
   "id": "c3c3c3c3-d4d4-e5e5-f6f6-a7a7a7a7a7a7",
   "name": "Evening Hourly",
-  "resourceType": 2,
-  "packageType": 1,
+  "resourceType": "executive_room",
+  "packageType": "hourly",
   "priceAmount": 700.00,
   "durationHours": null,
   "durationDays": null,
@@ -1830,7 +1818,7 @@ Content-Type: application/json
 
 #### P-04 — Create Package (Fail — Duplicate Name within Same ResourceType)
 
-Tries to create another package named "Evening Hourly" for `resourceType: 1`, which already exists from P-01.
+Tries to create another package named "Evening Hourly" for `"coworking_seats"`, which already exists from P-01.
 
 **Request:**
 ```
@@ -1841,8 +1829,8 @@ Content-Type: application/json
 ```json
 {
   "name": "Evening Hourly",
-  "resourceType": 1,
-  "packageType": 1,
+  "resourceType": "coworking_seats",
+  "packageType": "hourly",
   "priceAmount": 35.00,
   "durationHours": null,
   "durationDays": null,
@@ -1878,8 +1866,8 @@ Content-Type: application/json
 ```json
 {
   "name": "",
-  "resourceType": 0,
-  "packageType": 99,
+  "resourceType": "invalid_resource",
+  "packageType": "invalid_type",
   "priceAmount": -100,
   "durationHours": null,
   "durationDays": null,
@@ -1922,8 +1910,8 @@ Content-Type: application/json
 ```json
 {
   "name": "Free Trial",
-  "resourceType": 1,
-  "packageType": 1,
+  "resourceType": "coworking_seats",
+  "packageType": "hourly",
   "priceAmount": 0,
   "durationHours": null,
   "durationDays": null,
@@ -1963,8 +1951,8 @@ Authorization: Bearer <token>
 {
   "id": "{evening-hourly-id}",
   "name": "Evening Hourly",
-  "resourceType": 1,
-  "packageType": 1,
+  "resourceType": "coworking_seats",
+  "packageType": "hourly",
   "priceAmount": 45.00,
   "durationHours": null,
   "durationDays": null,
@@ -2012,7 +2000,7 @@ Authorization: Bearer <token>
 
 **Expected response — `200 OK`:**
 
-An array of all packages (11 seeded + any created in tests P-01 through P-03). The ordering groups all `resourceType: 1` packages first, then `resourceType: 2`, then `resourceType: 3`. Within each group, packages are ordered by their `packageType` integer value (Hourly=1 first, then DayPass=2, etc.).
+An array of all packages (11 seeded + any created in tests P-01 through P-03). The ordering groups all `"coworking_seats"` packages first, then `"executive_room"`, then `"collaboration_room"`. Within each group, packages are ordered by `packageType` then `name`.
 
 Abbreviated expected shape:
 ```json
@@ -2020,8 +2008,8 @@ Abbreviated expected shape:
   {
     "id": "...",
     "name": "Evening Hourly",
-    "resourceType": 1,
-    "packageType": 1,
+    "resourceType": "coworking_seats",
+    "packageType": "hourly",
     "priceAmount": 45.00,
     "durationHours": null,
     "durationDays": null,
@@ -2036,8 +2024,8 @@ Abbreviated expected shape:
   {
     "id": "...",
     "name": "Hourly — Regular",
-    "resourceType": 1,
-    "packageType": 1,
+    "resourceType": "coworking_seats",
+    "packageType": "hourly",
     "priceAmount": 50.00,
     "durationHours": null,
     "durationDays": null,
@@ -2061,41 +2049,41 @@ Returns only Executive Room packages.
 
 **Request:**
 ```
-GET https://localhost:7000/api/coworking/admin/packages?resourceType=2
+GET https://localhost:7000/api/coworking/admin/packages?resourceType=executive_room
 Authorization: Bearer <token>
 ```
 
 **Expected response — `200 OK`:**
 
-Array of packages where `resourceType: 2`. After seeding + P-03, this should include:
+Array of packages where `resourceType: "executive_room"`. After seeding + P-03, this should include:
 
 ```json
 [
   {
     "name": "Evening Hourly",
-    "resourceType": 2,
-    "packageType": 1,
+    "resourceType": "executive_room",
+    "packageType": "hourly",
     "priceAmount": 700.00,
     ...
   },
   {
     "name": "Executive Room — Hourly",
-    "resourceType": 2,
-    "packageType": 1,
+    "resourceType": "executive_room",
+    "packageType": "hourly",
     "priceAmount": 800.00,
     ...
   },
   {
     "name": "Executive Room — Half Day",
-    "resourceType": 2,
-    "packageType": 3,
+    "resourceType": "executive_room",
+    "packageType": "half_day",
     "priceAmount": 3000.00,
     ...
   },
   {
     "name": "Executive Room — Full Day",
-    "resourceType": 2,
-    "packageType": 4,
+    "resourceType": "executive_room",
+    "packageType": "full_day",
     "priceAmount": 5500.00,
     ...
   }
@@ -2141,8 +2129,8 @@ Content-Type: application/json
 {
   "id": "{evening-hourly-id}",
   "name": "Evening Hourly",
-  "resourceType": 1,
-  "packageType": 1,
+  "resourceType": "coworking_seats",
+  "packageType": "hourly",
   "priceAmount": 55.00,
   "durationHours": null,
   "durationDays": null,
@@ -2183,8 +2171,8 @@ Content-Type: application/json
 {
   "id": "{evening-hourly-id}",
   "name": "Evening Hourly — Student Promo",
-  "resourceType": 1,
-  "packageType": 1,
+  "resourceType": "coworking_seats",
+  "packageType": "hourly",
   "priceAmount": 55.00,
   "durationHours": null,
   "durationDays": null,
@@ -2471,15 +2459,15 @@ The framework returns 404 because no route matches `resources/not-a-valid-guid` 
 | R-01 | POST | `/resources` | Create new seat | 200 |
 | R-02 | POST | `/resources` | Create meeting room | 200 |
 | R-03 | POST | `/resources` | Duplicate name | 409 |
-| R-04 | POST | `/resources` | Empty name, invalid enum, capacity 0, negative sortOrder | 400 |
+| R-04 | POST | `/resources` | Empty name, invalid enum string, capacity 0 | 400 |
 | R-05 | POST | `/resources` | Name exceeds 100 chars | 400 |
 | R-06 | GET | `/resources/{id}` | Fetch created resource | 200 |
 | R-07 | GET | `/resources/{id}` | Non-existent ID | 404 |
 | R-08 | GET | `/resources` | All resources, no filter | 200 |
-| R-09 | GET | `/resources?resourceType=1` | Filter by CoworkingSeats | 200 |
+| R-09 | GET | `/resources?resourceType=coworking_seats` | Filter by CoworkingSeats | 200 |
 | R-10 | GET | `/resources?isActive=true` | Filter active only | 200 |
-| R-11 | GET | `/resources?resourceType=1&isActive=true` | Combined filter | 200 |
-| R-12 | PUT | `/resources/{id}` | Partial update (description, sortOrder) | 200 |
+| R-11 | GET | `/resources?resourceType=coworking_seats&isActive=true` | Combined filter | 200 |
+| R-12 | PUT | `/resources/{id}` | Partial update (description only) | 200 |
 | R-13 | PUT | `/resources/{id}` | Rename to unique name | 200 |
 | R-14 | PUT | `/resources/{id}` | Rename to existing name | 409 |
 | R-15 | PUT | `/resources/{id}` | Non-existent ID | 404 |
@@ -2498,7 +2486,7 @@ The framework returns 404 because no route matches `resources/not-a-valid-guid` 
 | P-07 | GET | `/packages/{id}` | Fetch created package | 200 |
 | P-08 | GET | `/packages/{id}` | Non-existent ID | 404 |
 | P-09 | GET | `/packages` | All packages, no filter | 200 |
-| P-10 | GET | `/packages?resourceType=2` | Filter by ExecutiveRoom | 200 |
+| P-10 | GET | `/packages?resourceType=executive_room` | Filter by ExecutiveRoom | 200 |
 | P-11 | GET | `/packages?isActive=true` | Filter active only | 200 |
 | P-12 | PUT | `/packages/{id}` | Update price only | 200 |
 | P-13 | PUT | `/packages/{id}` | Update name and student discount | 200 |

@@ -22,6 +22,515 @@ namespace Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Domain.Entity.Coworking.Booking", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("ActualEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("actual_end");
+
+                    b.Property<DateTime?>("ActualStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("actual_start");
+
+                    b.Property<decimal>("BalanceAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("balance_amount");
+
+                    b.Property<decimal>("BaseAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("base_amount");
+
+                    b.Property<int>("BookingStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("booking_status");
+
+                    b.Property<int>("BookingType")
+                        .HasColumnType("integer")
+                        .HasColumnName("booking_type");
+
+                    b.Property<string>("CancellationReason")
+                        .HasColumnType("text")
+                        .HasColumnName("cancellation_reason");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("discount_amount");
+
+                    b.Property<decimal>("DownpaymentAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("downpayment_amount");
+
+                    b.Property<DateTime?>("DownpaymentPaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("downpayment_paid_at");
+
+                    b.Property<DateTime?>("EndingReminderSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ending_reminder_sent_at");
+
+                    b.Property<string>("FrontDeskUserId")
+                        .HasColumnType("text")
+                        .HasColumnName("front_desk_user_id");
+
+                    b.Property<bool>("IsStudent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_student");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
+
+                    b.Property<decimal>("OverstayAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("overstay_amount");
+
+                    b.Property<int>("PaxCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("pax_count");
+
+                    b.Property<int>("PaymentStatus")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("payment_status");
+
+                    b.Property<string>("ReferenceNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("reference_number");
+
+                    b.Property<DateTime?>("ReminderSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reminder_sent_at");
+
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resource_id");
+
+                    b.Property<DateTime>("ScheduledEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scheduled_end");
+
+                    b.Property<DateTime>("ScheduledStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scheduled_start");
+
+                    b.Property<Guid>("ServicePackageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_package_id");
+
+                    b.Property<decimal>("SnapshotHourlyRate")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("snapshot_hourly_rate");
+
+                    b.Property<string>("SnapshotPackageName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("snapshot_package_name");
+
+                    b.Property<decimal>("SnapshotPricePerUnit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("snapshot_price_per_unit");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_amount");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_bookings");
+
+                    b.HasIndex("BookingStatus")
+                        .HasDatabaseName("ix_bookings_booking_status");
+
+                    b.HasIndex("ReferenceNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_bookings_reference_number");
+
+                    b.HasIndex("ScheduledStart")
+                        .HasDatabaseName("ix_bookings_scheduled_start");
+
+                    b.HasIndex("ServicePackageId")
+                        .HasDatabaseName("ix_bookings_service_package_id");
+
+                    b.HasIndex("ResourceId", "ScheduledStart", "ScheduledEnd")
+                        .HasDatabaseName("ix_bookings_resource_id_scheduled_start_scheduled_end");
+
+                    b.ToTable("bookings", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entity.Coworking.BookingExtension", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("AddedHours")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("added_hours");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("ProcessedByUserId")
+                        .HasColumnType("text")
+                        .HasColumnName("processed_by_user_id");
+
+                    b.Property<decimal>("SnapshotHourlyRate")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("snapshot_hourly_rate");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_booking_extensions");
+
+                    b.HasIndex("BookingId")
+                        .HasDatabaseName("ix_booking_extensions_booking_id");
+
+                    b.ToTable("booking_extensions", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entity.Coworking.BookingGuest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("first_name");
+
+                    b.Property<bool>("IsStudentVerified")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_student_verified");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_name");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("StudentIdImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("student_id_image_url");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_booking_guests");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_booking_guests_booking_id");
+
+                    b.ToTable("booking_guests", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entity.Coworking.BookingPayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ExternalPaymentRef")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("external_payment_ref");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("integer")
+                        .HasColumnName("payment_method");
+
+                    b.Property<int>("PaymentType")
+                        .HasColumnType("integer")
+                        .HasColumnName("payment_type");
+
+                    b.Property<int>("PaymentValidationStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("payment_validation_status");
+
+                    b.Property<string>("ProcessedByUserId")
+                        .HasColumnType("text")
+                        .HasColumnName("processed_by_user_id");
+
+                    b.Property<string>("ProofOfPaymentUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("proof_of_payment_url");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("reference_number");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<DateTime?>("ValidatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("validated_at");
+
+                    b.Property<string>("ValidatedByUserId")
+                        .HasColumnType("text")
+                        .HasColumnName("validated_by_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_booking_payments");
+
+                    b.HasIndex("BookingId")
+                        .HasDatabaseName("ix_booking_payments_booking_id");
+
+                    b.HasIndex("ExternalPaymentRef")
+                        .HasDatabaseName("ix_booking_payments_external_payment_ref");
+
+                    b.HasIndex("PaymentValidationStatus")
+                        .HasDatabaseName("ix_booking_payments_payment_validation_status");
+
+                    b.ToTable("booking_payments", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entity.Coworking.CoworkingResource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("capacity");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("ResourceType")
+                        .HasColumnType("integer")
+                        .HasColumnName("resource_type");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_coworking_resources");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("ix_coworking_resources_is_active");
+
+                    b.HasIndex("ResourceType")
+                        .HasDatabaseName("ix_coworking_resources_resource_type");
+
+                    b.ToTable("coworking_resources", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entity.Coworking.ServicePackage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CoworkingResourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("coworking_resource_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal>("DownpaymentPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasDefaultValue(50m)
+                        .HasColumnName("downpayment_percent");
+
+                    b.Property<int?>("DurationDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_days");
+
+                    b.Property<int?>("DurationHours")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_hours");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsStudentEligible")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_student_eligible");
+
+                    b.Property<int?>("MaxCapacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_capacity");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("PackageType")
+                        .HasColumnType("integer")
+                        .HasColumnName("package_type");
+
+                    b.Property<decimal>("PriceAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("price_amount");
+
+                    b.Property<int>("ResourceType")
+                        .HasColumnType("integer")
+                        .HasColumnName("resource_type");
+
+                    b.Property<decimal>("StudentDiscountPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("student_discount_percent");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_service_packages");
+
+                    b.HasIndex("CoworkingResourceId")
+                        .HasDatabaseName("ix_service_packages_coworking_resource_id");
+
+                    b.HasIndex("ResourceType", "IsActive")
+                        .HasDatabaseName("ix_service_packages_resource_type_is_active");
+
+                    b.ToTable("service_packages", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Entity.Identity.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -358,6 +867,71 @@ namespace Persistence.Migrations
                     b.ToTable("UserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entity.Coworking.Booking", b =>
+                {
+                    b.HasOne("Domain.Entity.Coworking.CoworkingResource", "Resource")
+                        .WithMany("Bookings")
+                        .HasForeignKey("ResourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_bookings_coworking_resources_resource_id");
+
+                    b.HasOne("Domain.Entity.Coworking.ServicePackage", "ServicePackage")
+                        .WithMany()
+                        .HasForeignKey("ServicePackageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_bookings_service_packages_service_package_id");
+
+                    b.Navigation("Resource");
+
+                    b.Navigation("ServicePackage");
+                });
+
+            modelBuilder.Entity("Domain.Entity.Coworking.BookingExtension", b =>
+                {
+                    b.HasOne("Domain.Entity.Coworking.Booking", "Booking")
+                        .WithMany("Extensions")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_booking_extensions_bookings_booking_id");
+
+                    b.Navigation("Booking");
+                });
+
+            modelBuilder.Entity("Domain.Entity.Coworking.BookingGuest", b =>
+                {
+                    b.HasOne("Domain.Entity.Coworking.Booking", "Booking")
+                        .WithOne("Guest")
+                        .HasForeignKey("Domain.Entity.Coworking.BookingGuest", "BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_booking_guests_bookings_booking_id");
+
+                    b.Navigation("Booking");
+                });
+
+            modelBuilder.Entity("Domain.Entity.Coworking.BookingPayment", b =>
+                {
+                    b.HasOne("Domain.Entity.Coworking.Booking", "Booking")
+                        .WithMany("Payments")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_booking_payments_bookings_booking_id");
+
+                    b.Navigation("Booking");
+                });
+
+            modelBuilder.Entity("Domain.Entity.Coworking.ServicePackage", b =>
+                {
+                    b.HasOne("Domain.Entity.Coworking.CoworkingResource", null)
+                        .WithMany("ServicePackages")
+                        .HasForeignKey("CoworkingResourceId")
+                        .HasConstraintName("fk_service_packages_coworking_resources_coworking_resource_id");
+                });
+
             modelBuilder.Entity("Domain.Entity.Identity.RefreshToken", b =>
                 {
                     b.HasOne("Domain.Entity.Identity.User", "User")
@@ -429,6 +1003,22 @@ namespace Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_tokens_users_user_id");
+                });
+
+            modelBuilder.Entity("Domain.Entity.Coworking.Booking", b =>
+                {
+                    b.Navigation("Extensions");
+
+                    b.Navigation("Guest");
+
+                    b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("Domain.Entity.Coworking.CoworkingResource", b =>
+                {
+                    b.Navigation("Bookings");
+
+                    b.Navigation("ServicePackages");
                 });
 
             modelBuilder.Entity("Domain.Entity.Identity.Role", b =>

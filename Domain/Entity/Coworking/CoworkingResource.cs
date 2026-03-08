@@ -10,7 +10,6 @@ namespace Domain.Entity.Coworking
         public int Capacity { get; set; }
         public string? Description { get; set; }
         public bool IsActive { get; set; } = true;
-        public int SortOrder { get; set; }
 
         // Navigation
         public ICollection<Booking> Bookings { get; set; } = [];

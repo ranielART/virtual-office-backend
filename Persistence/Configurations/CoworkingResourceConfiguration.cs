@@ -25,10 +25,6 @@ namespace Persistence.Configurations
                 .IsRequired()
                 .HasDefaultValue(true);
 
-            builder.Property(r => r.SortOrder)
-                .IsRequired()
-                .HasDefaultValue(0);
-
             builder.HasIndex(r => r.ResourceType);
             builder.HasIndex(r => r.IsActive);
         }

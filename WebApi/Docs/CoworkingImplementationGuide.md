@@ -24,7 +24,7 @@
 | 9 | No-Show Detection & Background Jobs | Automated no-show marking, grace period email | Yes — `ReminderSentAt` |
 | 10 | Session Extension | FrontDesk extends active sessions with availability check | No |
 | 11 | Paymongo Integration | Automated payment via Paymongo webhook | Yes — `ExternalPaymentRef` |
-
+    
 ---
 
 ## Module Folder Structure

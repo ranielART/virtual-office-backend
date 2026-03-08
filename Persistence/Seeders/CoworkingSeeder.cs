@@ -38,7 +38,6 @@ namespace Persistence.Seeders
                     Capacity = 1,
                     Description = $"Individual coworking seat #{i:D2}",
                     IsActive = true,
-                    SortOrder = i,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 });
@@ -53,7 +52,6 @@ namespace Persistence.Seeders
                 Capacity = 3,
                 Description = "Private executive meeting room. Maximum 3 pax.",
                 IsActive = true,
-                SortOrder = 21,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
@@ -66,7 +64,6 @@ namespace Persistence.Seeders
                 Capacity = 20,
                 Description = "Large collaboration meeting room. Maximum 20 pax.",
                 IsActive = true,
-                SortOrder = 22,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });

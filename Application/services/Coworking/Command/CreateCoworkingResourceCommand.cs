@@ -43,7 +43,6 @@ namespace Application.Services.Coworking.Command
                 Capacity = req.Capacity,
                 Description = req.Description,
                 IsActive = true,
-                SortOrder = req.SortOrder,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -62,7 +61,6 @@ namespace Application.Services.Coworking.Command
             Capacity = r.Capacity,
             Description = r.Description,
             IsActive = r.IsActive,
-            SortOrder = r.SortOrder,
             CreatedAt = r.CreatedAt,
             UpdatedAt = r.UpdatedAt
         };

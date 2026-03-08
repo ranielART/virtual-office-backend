@@ -40,8 +40,7 @@ namespace Application.Services.Coworking.Query
                 query = query.Where(r => r.IsActive == request.IsActive.Value);
 
             var resources = await query
-                .OrderBy(r => r.SortOrder)
-                .ThenBy(r => r.Name)
+                .OrderBy(r => r.Name)
                 .ToListAsync(cancellationToken);
 
             return resources.Select(r => new CoworkingResourceResponse
@@ -52,7 +51,6 @@ namespace Application.Services.Coworking.Query
                 Capacity = r.Capacity,
                 Description = r.Description,
                 IsActive = r.IsActive,
-                SortOrder = r.SortOrder,
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt
             }).ToList();
