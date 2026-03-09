@@ -7,9 +7,6 @@ namespace Application.Services.User.Validator
     {
         public RefreshTokenCommandValidator()
         {
-            RuleFor(x => x.Request.AccessToken)
-                .NotEmpty().WithMessage("Access token is required");
-
             RuleFor(x => x.Request.RefreshToken)
                 .NotEmpty().WithMessage("Refresh token is required");
         }
