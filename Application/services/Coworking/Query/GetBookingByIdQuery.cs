@@ -1,4 +1,5 @@
 using Application.Common.Exceptions;
+using Application.Common.Interfaces;
 using Application.Services.Coworking.Response;
 using Domain.Enum;
 using MediatR;
@@ -17,10 +18,12 @@ namespace Application.Services.Coworking.Query
         : IRequestHandler<GetBookingByIdQuery, BookingDetailResponse>
     {
         private readonly ApplicationDbContext _dbContext;
+        private readonly IStorageService _storageService;
 
-        public GetBookingByIdQueryHandler(ApplicationDbContext dbContext)
+        public GetBookingByIdQueryHandler(ApplicationDbContext dbContext, IStorageService storageService)
         {
-            _dbContext = dbContext;
+            _dbContext      = dbContext;
+            _storageService = storageService;
         }
 
         public async Task<BookingDetailResponse> Handle(
@@ -39,6 +42,25 @@ namespace Application.Services.Coworking.Query
                             (p.PaymentValidationStatus == PaymentValidationStatus.NotRequired ||
                              p.PaymentValidationStatus == PaymentValidationStatus.Validated))
                 .Sum(p => p.Amount);
+
+            var paymentResponses = await Task.WhenAll(booking.Payments.Select(async p =>
+            {
+                var proofUrl = p.ProofOfPaymentUrl != null
+                    ? await _storageService.GetSasUrlFromAbsoluteUrlAsync(p.ProofOfPaymentUrl, TimeSpan.FromMinutes(30))
+                    : null;
+
+                return new BookingPaymentResponse
+                {
+                    PaymentId               = p.Id,
+                    Amount                  = p.Amount,
+                    PaymentMethod           = p.PaymentMethod,
+                    PaymentType             = p.PaymentType,
+                    PaymentValidationStatus = p.PaymentValidationStatus,
+                    ProofOfPaymentUrl       = proofUrl,
+                    PaidAt                  = p.PaidAt,
+                    CreatedAt               = p.CreatedAt
+                };
+            }));
 
             return new BookingDetailResponse
             {
@@ -69,17 +91,7 @@ namespace Application.Services.Coworking.Query
                 TotalPaid           = totalPaid,
                 OutstandingBalance  = booking.TotalAmount - totalPaid,
                 Notes               = booking.Notes,
-                Payments            = booking.Payments.Select(p => new BookingPaymentResponse
-                {
-                    PaymentId               = p.Id,
-                    Amount                  = p.Amount,
-                    PaymentMethod           = p.PaymentMethod,
-                    PaymentType             = p.PaymentType,
-                    PaymentValidationStatus = p.PaymentValidationStatus,
-                    ProofOfPaymentUrl       = p.ProofOfPaymentUrl,
-                    PaidAt                  = p.PaidAt,
-                    CreatedAt               = p.CreatedAt
-                }).ToList()
+                Payments            = paymentResponses.ToList()
             };
         }
     }

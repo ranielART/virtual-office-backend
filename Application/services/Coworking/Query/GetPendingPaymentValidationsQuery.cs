@@ -1,3 +1,4 @@
+using Application.Common.Interfaces;
 using Application.Services.Coworking.Response;
 using Domain.Enum;
 using MediatR;
@@ -12,10 +13,12 @@ namespace Application.Services.Coworking.Query
         : IRequestHandler<GetPendingPaymentValidationsQuery, List<PendingPaymentValidationResponse>>
     {
         private readonly ApplicationDbContext _dbContext;
+        private readonly IStorageService _storageService;
 
-        public GetPendingPaymentValidationsQueryHandler(ApplicationDbContext dbContext)
+        public GetPendingPaymentValidationsQueryHandler(ApplicationDbContext dbContext, IStorageService storageService)
         {
-            _dbContext = dbContext;
+            _dbContext      = dbContext;
+            _storageService = storageService;
         }
 
         public async Task<List<PendingPaymentValidationResponse>> Handle(
@@ -30,21 +33,30 @@ namespace Application.Services.Coworking.Query
                 .OrderBy(p => p.CreatedAt)
                 .ToListAsync(cancellationToken);
 
-            return payments.Select(p => new PendingPaymentValidationResponse
+            var responses = await Task.WhenAll(payments.Select(async p =>
             {
-                PaymentId        = p.Id,
-                BookingId        = p.BookingId,
-                ReferenceNumber  = p.Booking.ReferenceNumber,
-                GuestName        = p.Booking.Guest != null
-                                    ? $"{p.Booking.Guest.FirstName} {p.Booking.Guest.LastName}"
-                                    : string.Empty,
-                ResourceName     = p.Booking.Resource.Name,
-                Amount           = p.Amount,
-                PaymentMethod    = p.PaymentMethod,
-                PaymentType      = p.PaymentType,
-                ProofOfPaymentUrl = p.ProofOfPaymentUrl ?? string.Empty,
-                CreatedAt        = p.CreatedAt
-            }).ToList();
+                var proofUrl = p.ProofOfPaymentUrl != null
+                    ? await _storageService.GetSasUrlFromAbsoluteUrlAsync(p.ProofOfPaymentUrl, TimeSpan.FromMinutes(30))
+                    : string.Empty;
+
+                return new PendingPaymentValidationResponse
+                {
+                    PaymentId         = p.Id,
+                    BookingId         = p.BookingId,
+                    ReferenceNumber   = p.Booking.ReferenceNumber,
+                    GuestName         = p.Booking.Guest != null
+                                        ? $"{p.Booking.Guest.FirstName} {p.Booking.Guest.LastName}"
+                                        : string.Empty,
+                    ResourceName      = p.Booking.Resource.Name,
+                    Amount            = p.Amount,
+                    PaymentMethod     = p.PaymentMethod,
+                    PaymentType       = p.PaymentType,
+                    ProofOfPaymentUrl = proofUrl,
+                    CreatedAt         = p.CreatedAt
+                };
+            }));
+
+            return responses.ToList();
         }
     }
 }

@@ -173,5 +173,17 @@ namespace Infrastructure.Services
             var blobClient = _containerClient.GetBlobClient(key);
             return blobClient.Uri.AbsoluteUri;
         }
+
+        public Task<string> GetSasUrlFromAbsoluteUrlAsync(string absoluteUrl, TimeSpan? expiresIn = null)
+        {
+            // Strip the container base URL to get the blob key
+            // e.g. "https://<account>.blob.core.windows.net/<container>/payment-proofs/..." → "payment-proofs/..."
+            var containerBase = _containerClient.Uri.AbsoluteUri.TrimEnd('/') + "/";
+            if (!absoluteUrl.StartsWith(containerBase))
+                throw new ArgumentException($"URL does not belong to this container: {absoluteUrl}");
+
+            var key = absoluteUrl.Substring(containerBase.Length);
+            return GetBlobUrlWithSasAsync(key, expiresIn);
+        }
     }
 }
