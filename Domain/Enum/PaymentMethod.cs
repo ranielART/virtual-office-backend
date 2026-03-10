@@ -7,6 +7,7 @@ namespace Domain.Enum
         GCash = 3,
         Maya = 4,
         BankTransfer = 5,
-        Paymongo = 6
+        Paymongo = 6,
+        ImageAttachment = 7  // walk-in proof upload: any e-wallet/bank screenshot
     }
 }
