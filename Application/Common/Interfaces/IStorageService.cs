@@ -17,5 +17,11 @@ namespace Application.Common.Interfaces
         /// Get the blob URL (without SAS token)
         /// </summary>
         string GetBlobUrl(string key);
+
+        /// <summary>
+        /// Generate a SAS URL from a full absolute blob URL already stored in the database.
+        /// Extracts the blob key internally — callers do not need to know the container name.
+        /// </summary>
+        Task<string> GetSasUrlFromAbsoluteUrlAsync(string absoluteUrl, TimeSpan? expiresIn = null);
     }
 }

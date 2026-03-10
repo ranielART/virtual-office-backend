@@ -70,7 +70,7 @@ namespace Application.Services.Coworking.Command
 
                 // 5. Generate reference number using PostgreSQL sequence
                 var nextVal = await _dbContext.Database
-                    .SqlQuery<long>($"SELECT nextval('booking_ref_seq')")
+                    .SqlQuery<long>($"SELECT nextval('booking_ref_seq') AS \"Value\"")
                     .FirstAsync(cancellationToken);
                 var referenceNumber = $"BKG-{nextVal:D4}";
 

@@ -20,6 +20,16 @@ namespace WebApi.Controllers
             _mediator = mediator;
         }
 
+        // ── Dashboard ──────────────────────────────────────────────────────────
+
+        // GET api/coworking/admin/dashboard
+        [HttpGet("dashboard")]
+        public async Task<IActionResult> GetDashboard(CancellationToken ct)
+        {
+            var result = await _mediator.Send(new GetAdminDashboardQuery(), ct);
+            return Ok(result);
+        }
+
         // ── Resources ──────────────────────────────────────────────────────────
 
         [HttpPost("resources")]

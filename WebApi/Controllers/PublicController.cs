@@ -1,3 +1,4 @@
+using Application.Common.Extensions;
 using Application.Services.Public.Query;
 using Domain.Enum;
 using MediatR;
@@ -24,9 +25,11 @@ namespace WebApi.Controllers
         }
 
         [HttpGet("packages")]
-        public async Task<IActionResult> GetAvailablePackages([FromQuery] ResourceType? resourceType = null)
+        public async Task<IActionResult> GetAvailablePackages([FromQuery] string? resourceType = null)
         {
-            var result = await _mediator.Send(new GetAvailablePackagesQuery(resourceType));
+            var parsedResourceType = ResourceTypeExtensions.ParseResourceType(resourceType);
+
+            var result = await _mediator.Send(new GetAvailablePackagesQuery(parsedResourceType));
             return Ok(result);
         }
     }
