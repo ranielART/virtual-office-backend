@@ -49,11 +49,9 @@ namespace Application.Services.Coworking.Command
             // Resolve effective end time
             var effectiveEnd = command.ActualEndOverride?.ToUniversalTime() ?? DateTime.UtcNow;
 
-            // Validate override is after ActualStart
             if (effectiveEnd <= booking.ActualStart)
                 throw new ConflictException("Actual end time must be after the booking's actual start time.");
 
-            // Validate override is not in the future
             if (effectiveEnd > DateTime.UtcNow)
                 throw new ConflictException("Actual end time cannot be in the future.");
 

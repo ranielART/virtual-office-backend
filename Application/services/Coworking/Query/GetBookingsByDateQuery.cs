@@ -45,6 +45,7 @@ namespace Application.Services.Coworking.Query
                 ScheduledStart      = b.ScheduledStart,
                 ScheduledEnd        = b.ScheduledEnd,
                 ActualStart         = b.ActualStart,
+                ActualEnd           = b.ActualEnd,
                 SnapshotPackageName = b.SnapshotPackageName,
                 TotalAmount         = b.TotalAmount,
                 BalanceAmount       = b.BalanceAmount

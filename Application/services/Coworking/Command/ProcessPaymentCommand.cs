@@ -40,6 +40,17 @@ namespace Application.Services.Coworking.Command
                 .FirstOrDefaultAsync(b => b.Id == req.BookingId, cancellationToken)
                 ?? throw new NotFoundException($"Booking '{req.BookingId}' not found.");
 
+            // Calculate current paid amount from existing DB payments before adding the new one
+            var currentPaid = booking.Payments
+                .Where(p => p.PaidAt != null &&
+                            (p.PaymentValidationStatus == PaymentValidationStatus.NotRequired ||
+                             p.PaymentValidationStatus == PaymentValidationStatus.Validated))
+                .Sum(p => p.Amount);
+
+            // Guard — prevent submission if booking is already fully paid
+            if (currentPaid >= booking.TotalAmount)
+                throw new ConflictException("This booking is already fully paid. No further payments can be submitted.");
+
             // Guard — only Cash accepted in this phase
             switch (req.PaymentMethod)
             {
@@ -75,10 +86,24 @@ namespace Application.Services.Coworking.Command
                 payment.ReferenceNumber = req.Notes;
 
             _dbContext.BookingPayments.Add(payment);
-            booking.Payments.Add(payment);
 
-            // Recalculate PaymentStatus
-            RecalculatePaymentStatus(booking);
+            // Calculate new totals explicitly — do NOT use booking.Payments collection
+            // after Add() since EF Core relationship fixup may cause double-counting
+            var newTotalPaid = currentPaid + req.Amount;
+            booking.BalanceAmount = booking.TotalAmount - newTotalPaid;
+            booking.PaymentStatus = newTotalPaid >= booking.TotalAmount
+                ? PaymentStatus.FullyPaid
+                : newTotalPaid > 0
+                    ? PaymentStatus.PartiallyPaid
+                    : PaymentStatus.Unpaid;
+
+            // Resolve Overstayed → CheckedOut once fully paid
+            if (booking.PaymentStatus == PaymentStatus.FullyPaid &&
+                booking.BookingStatus == BookingStatus.Overstayed)
+            {
+                booking.BookingStatus = BookingStatus.CheckedOut;
+                booking.UpdatedAt     = DateTime.UtcNow;
+            }
 
             await _dbContext.SaveChangesAsync(cancellationToken);
             return Unit.Value;

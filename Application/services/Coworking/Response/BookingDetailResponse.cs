@@ -1,3 +1,4 @@
+using Domain.Entity.Coworking;
 using Domain.Enum;
 
 namespace Application.Services.Coworking.Response
@@ -7,6 +8,7 @@ namespace Application.Services.Coworking.Response
         public Guid BookingId { get; set; }
         public string ReferenceNumber { get; set; } = string.Empty;
         public BookingType BookingType { get; set; }
+
         public BookingStatus BookingStatus { get; set; }
         public PaymentStatus PaymentStatus { get; set; }
         public string ResourceName { get; set; } = string.Empty;
