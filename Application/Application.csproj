@@ -25,6 +25,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Services\File\Validator\" />
+    <Folder Include="Services\File\Query\" />
     <Folder Include="Services\User\Query\Customer\" />
   </ItemGroup>
 

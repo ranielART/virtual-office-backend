@@ -34,6 +34,7 @@ namespace Domain.Entity.Coworking
         public string SnapshotPackageName { get; set; } = string.Empty;
         public decimal SnapshotPricePerUnit { get; set; }
         public decimal SnapshotHourlyRate { get; set; }
+        public PaymentScheme SnapshotPaymentScheme { get; set; } = PaymentScheme.Postpaid;
 
         // Financials
         public decimal BaseAmount { get; set; }

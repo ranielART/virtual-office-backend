@@ -2,18 +2,23 @@ namespace Application.Services.Coworking.Response
 {
     public class AdminDashboardResponse
     {
-        public TodayStatsDto Today { get; set; } = new();
-        public OverallStatsDto Overall { get; set; } = new();
-        public List<BookingSessionResponse> RecentBookings { get; set; } = new();
-    }
+        /// <summary>Always-current state — unaffected by the period filter.</summary>
+        public LiveStatsDto Live { get; set; } = new();
 
-    public class TodayStatsDto
-    {
-        public int TotalBookings { get; set; }
-        public int ActiveSessions { get; set; }
-        public int OverstayedSessions { get; set; }
-        public int PendingPaymentValidations { get; set; }
-        public decimal Revenue { get; set; }
+        /// <summary>Stats scoped to the selected period.</summary>
+        public PeriodStatsDto Period { get; set; } = new();
+
+        /// <summary>Check-in counts and billed amounts grouped by resource type within the period.</summary>
+        public List<ResourceTypeBreakdownDto> ByResourceType { get; set; } = [];
+
+        /// <summary>Check-in counts and billed amounts grouped by package type within the period.</summary>
+        public List<PackageTypeBreakdownDto> ByPackageType { get; set; } = [];
+
+        /// <summary>All-time totals — never filtered by period.</summary>
+        public OverallStatsDto Overall { get; set; } = new();
+
+        /// <summary>Last 5 bookings regardless of period.</summary>
+        public List<BookingSessionResponse> RecentBookings { get; set; } = [];
     }
 
     public class OverallStatsDto

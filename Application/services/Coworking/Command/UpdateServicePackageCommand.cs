@@ -64,6 +64,9 @@ namespace Application.Services.Coworking.Command
             if (req.IsStudentEligible.HasValue) package.IsStudentEligible = req.IsStudentEligible.Value;
             if (req.StudentDiscountPercent.HasValue) package.StudentDiscountPercent = req.StudentDiscountPercent.Value;
             if (req.DownpaymentPercent.HasValue) package.DownpaymentPercent = req.DownpaymentPercent.Value;
+            if (req.AllowsUpfront.HasValue)  package.AllowsUpfront  = req.AllowsUpfront.Value;
+            if (req.AllowsPostpaid.HasValue) package.AllowsPostpaid = req.AllowsPostpaid.Value;
+            if (req.AllowsDaily.HasValue)    package.AllowsDaily    = req.AllowsDaily.Value;
 
             package.UpdatedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync(cancellationToken);

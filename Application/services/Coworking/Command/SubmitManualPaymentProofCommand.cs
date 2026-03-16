@@ -47,14 +47,24 @@ namespace Application.Services.Coworking.Command
             var req = command.Request;
 
             var booking = await _dbContext.Bookings
+                .Include(b => b.Payments)
                 .FirstOrDefaultAsync(b => b.Id == req.BookingId, cancellationToken)
                 ?? throw new NotFoundException($"Booking '{req.BookingId}' not found.");
 
             if (booking.BookingStatus == BookingStatus.Cancelled ||
                 booking.BookingStatus == BookingStatus.NoShow)
-            {
                 throw new ConflictException("Payments cannot be submitted for a booking that is cancelled or marked as no-show.");
-            }
+
+            // Calculate current paid amount from existing DB payments before adding the new one
+            var currentPaid = booking.Payments
+                .Where(p => p.PaidAt != null &&
+                            (p.PaymentValidationStatus == PaymentValidationStatus.NotRequired ||
+                             p.PaymentValidationStatus == PaymentValidationStatus.Validated))
+                .Sum(p => p.Amount);
+
+            // Guard — prevent submission if booking is already fully paid
+            if (currentPaid >= booking.TotalAmount)
+                throw new ConflictException("This booking is already fully paid. No further payments can be submitted.");
 
             // Upload to Azure Blob Storage
             var fileName  = Path.GetFileName(command.File.FileName);
@@ -64,6 +74,7 @@ namespace Application.Services.Coworking.Command
                                 command.File.OpenReadStream(),
                                 command.File.ContentType);
 
+            // FrontDesk physically verified the proof — immediately validated, no pending step
             var payment = new BookingPayment
             {
                 Id                      = Guid.NewGuid(),
@@ -71,16 +82,35 @@ namespace Application.Services.Coworking.Command
                 Amount                  = req.Amount,
                 PaymentMethod           = PaymentMethod.ImageAttachment,
                 PaymentType             = req.PaymentType,
-                PaymentValidationStatus = PaymentValidationStatus.PendingValidation,
+                PaymentValidationStatus = PaymentValidationStatus.Validated,
                 ProofOfPaymentUrl       = proofUrl,
                 ReferenceNumber         = req.GuestProvidedReference,
                 ProcessedByUserId       = command.ProcessedByUserId,
-                PaidAt                  = null,  // set only after FrontDesk validation
+                PaidAt                  = DateTime.UtcNow,
                 CreatedAt               = DateTime.UtcNow,
                 UpdatedAt               = DateTime.UtcNow
             };
 
             _dbContext.BookingPayments.Add(payment);
+
+            // Calculate new totals explicitly — do NOT use booking.Payments collection
+            // after Add() since EF Core relationship fixup may cause double-counting
+            var newTotalPaid = currentPaid + req.Amount;
+            booking.BalanceAmount = booking.TotalAmount - newTotalPaid;
+            booking.PaymentStatus = newTotalPaid >= booking.TotalAmount
+                ? PaymentStatus.FullyPaid
+                : newTotalPaid > 0
+                    ? PaymentStatus.PartiallyPaid
+                    : PaymentStatus.Unpaid;
+
+            // Resolve Overstayed → CheckedOut once fully paid
+            if (booking.PaymentStatus == PaymentStatus.FullyPaid &&
+                booking.BookingStatus == BookingStatus.Overstayed)
+            {
+                booking.BookingStatus = BookingStatus.CheckedOut;
+                booking.UpdatedAt     = DateTime.UtcNow;
+            }
+
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             return Unit.Value;

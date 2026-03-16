@@ -22,11 +22,12 @@ namespace WebApi.Controllers
 
         // ── Dashboard ──────────────────────────────────────────────────────────
 
-        // GET api/coworking/admin/dashboard
+        // GET api/coworking/admin/dashboard?period=today|this_week|this_month|this_year
         [HttpGet("dashboard")]
-        public async Task<IActionResult> GetDashboard(CancellationToken ct)
+        public async Task<IActionResult> GetDashboard(
+            [FromQuery] string? period, CancellationToken ct)
         {
-            var result = await _mediator.Send(new GetAdminDashboardQuery(), ct);
+            var result = await _mediator.Send(new GetAdminDashboardQuery(period), ct);
             return Ok(result);
         }
 

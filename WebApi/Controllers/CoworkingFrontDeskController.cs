@@ -5,6 +5,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Application.Common.Models;
+using Application.Services.Coworking.Response;
 
 namespace WebApi.Controllers
 {
@@ -18,6 +20,17 @@ namespace WebApi.Controllers
         public CoworkingFrontDeskController(IMediator mediator)
         {
             _mediator = mediator;
+        }
+
+        // ── Dashboard ──────────────────────────────────────────────────────────
+
+        // GET api/coworking/frontdesk/dashboard?period=today|this_week|this_month|this_year
+        [HttpGet("dashboard")]
+        public async Task<IActionResult> GetDashboard(
+            [FromQuery] string? period, CancellationToken ct)
+        {
+            var result = await _mediator.Send(new GetFrontDeskDashboardQuery(period), ct);
+            return Ok(result);
         }
 
         // ── Phase 4A ───────────────────────────────────────────────────────────
@@ -63,12 +76,12 @@ namespace WebApi.Controllers
             return Ok(result);
         }
 
-        // GET api/coworking/frontdesk/bookings?date=2026-03-15
+        // GET api/coworking/frontdesk/bookings
         [HttpGet("bookings")]
-        public async Task<IActionResult> GetBookingsByDate(
-            [FromQuery] DateOnly date, CancellationToken ct)
+        public async Task<IActionResult> GetBookings(
+            [FromQuery] BookingFilterRequest filter, CancellationToken ct)
         {
-            var result = await _mediator.Send(new GetBookingsByDateQuery(date), ct);
+            var result = await _mediator.Send(new GetBookingsQuery(filter), ct);
             return Ok(result);
         }
 

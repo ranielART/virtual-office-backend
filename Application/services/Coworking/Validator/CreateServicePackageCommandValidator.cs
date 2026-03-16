@@ -49,6 +49,23 @@ namespace Application.Services.Coworking.Validator
                 .NotNull().WithMessage("Duration days is required for Monthly Dedicated Desk.")
                 .GreaterThan(0).WithMessage("Duration days must be greater than 0.")
                 .When(x => x.Request.PackageType == PackageType.MonthlyDedicatedDesk);
+
+            // At least one payment scheme must be enabled
+            RuleFor(x => x.Request)
+                .Must(r => r.AllowsUpfront || r.AllowsPostpaid || r.AllowsDaily)
+                .WithMessage("At least one payment scheme (AllowsUpfront, AllowsPostpaid, AllowsDaily) must be enabled.");
+
+            // AllowsUpfront is not valid for Hourly — total is unknown at time-in
+            RuleFor(x => x.Request.AllowsUpfront)
+                .Equal(false)
+                .WithMessage("Hourly packages cannot allow upfront payment — the total is unknown at time-in.")
+                .When(x => x.Request.PackageType == PackageType.Hourly);
+
+            // AllowsDaily is only valid for MonthlyDedicatedDesk
+            RuleFor(x => x.Request.AllowsDaily)
+                .Equal(false)
+                .WithMessage("Daily payment scheme is only available for Monthly Dedicated Desk packages.")
+                .When(x => x.Request.PackageType != PackageType.MonthlyDedicatedDesk);
         }
     }
 }

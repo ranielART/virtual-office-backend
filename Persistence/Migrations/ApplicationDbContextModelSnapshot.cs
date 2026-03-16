@@ -155,6 +155,10 @@ namespace Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("snapshot_package_name");
 
+                    b.Property<int>("SnapshotPaymentScheme")
+                        .HasColumnType("integer")
+                        .HasColumnName("snapshot_payment_scheme");
+
                     b.Property<decimal>("SnapshotPricePerUnit")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -449,6 +453,18 @@ namespace Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<bool>("AllowsDaily")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allows_daily");
+
+                    b.Property<bool>("AllowsPostpaid")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allows_postpaid");
+
+                    b.Property<bool>("AllowsUpfront")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allows_upfront");
 
                     b.Property<Guid?>("CoworkingResourceId")
                         .HasColumnType("uuid")
