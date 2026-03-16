@@ -22,6 +22,7 @@ namespace Application.Services.Coworking.Response
         public DateTime? ActualStart { get; set; }
         public DateTime? ActualEnd { get; set; }
         public string SnapshotPackageName { get; set; } = string.Empty;
+        public PaymentScheme SnapshotPaymentScheme { get; set; }
         public decimal BaseAmount { get; set; }
         public decimal DiscountAmount { get; set; }
         public decimal OverstayAmount { get; set; }

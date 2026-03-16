@@ -15,6 +15,9 @@ namespace Application.Services.Public.Response
         public bool IsStudentEligible { get; set; }
         public decimal StudentDiscountPercent { get; set; }
         public decimal DownpaymentPercent { get; set; }
+        public bool AllowsUpfront  { get; set; }
+        public bool AllowsPostpaid { get; set; }
+        public bool AllowsDaily    { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }

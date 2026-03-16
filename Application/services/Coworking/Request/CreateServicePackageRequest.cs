@@ -14,5 +14,8 @@ namespace Application.Services.Coworking.Request
         public bool IsStudentEligible { get; set; }
         public decimal StudentDiscountPercent { get; set; }
         public decimal DownpaymentPercent { get; set; } = 50;
+        public bool AllowsUpfront  { get; set; } = false;
+        public bool AllowsPostpaid { get; set; } = true;
+        public bool AllowsDaily    { get; set; } = false;
     }
 }

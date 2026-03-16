@@ -52,6 +52,9 @@ namespace Application.Services.Coworking.Command
                 IsStudentEligible = req.IsStudentEligible,
                 StudentDiscountPercent = req.StudentDiscountPercent,
                 DownpaymentPercent = req.DownpaymentPercent,
+                AllowsUpfront  = req.AllowsUpfront,
+                AllowsPostpaid = req.AllowsPostpaid,
+                AllowsDaily    = req.AllowsDaily,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -76,6 +79,9 @@ namespace Application.Services.Coworking.Command
             IsStudentEligible = p.IsStudentEligible,
             StudentDiscountPercent = p.StudentDiscountPercent,
             DownpaymentPercent = p.DownpaymentPercent,
+            AllowsUpfront  = p.AllowsUpfront,
+            AllowsPostpaid = p.AllowsPostpaid,
+            AllowsDaily    = p.AllowsDaily,
             IsActive = p.IsActive,
             CreatedAt = p.CreatedAt,
             UpdatedAt = p.UpdatedAt

@@ -46,15 +46,38 @@ namespace Application.Services.Coworking.Command
                 .FirstOrDefaultAsync(p => p.Id == req.ServicePackageId && p.IsActive, cancellationToken)
                 ?? throw new NotFoundException($"Service package '{req.ServicePackageId}' not found or is inactive.");
 
-            // 3. Begin transaction
+            // 3. EstimatedHours required for Hourly packages
+            if (package.PackageType == PackageType.Hourly && !req.EstimatedHours.HasValue)
+                throw new ConflictException("Estimated hours is required for hourly packages.");
+
+            // 4. Validate chosen payment scheme against what the package allows
+            var schemeAllowed = req.PaymentScheme switch
+            {
+                PaymentScheme.Upfront  => package.AllowsUpfront,
+                PaymentScheme.Postpaid => package.AllowsPostpaid,
+                PaymentScheme.Daily    => package.AllowsDaily,
+                _                     => false
+            };
+
+            if (!schemeAllowed)
+                throw new ConflictException(
+                    $"Payment scheme '{req.PaymentScheme}' is not allowed for package '{package.Name}'. " +
+                    $"Allowed: " +
+                    $"{(package.AllowsUpfront ? "Upfront " : "")}" +
+                    $"{(package.AllowsPostpaid ? "Postpaid " : "")}" +
+                    $"{(package.AllowsDaily ? "Daily" : "")}".Trim());
+
+            // 5. Begin transaction
             await using var tx = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
             try
             {
                 var now = DateTime.UtcNow;
-                var requestedStart = now;
-                var requestedEnd   = now.AddHours((double)req.EstimatedHours);
 
-                // 4. Re-check availability inside transaction
+                // 6. Resolve ScheduledEnd based on package type
+                var requestedStart = now;
+                var requestedEnd   = ResolveScheduledEnd(package, req.EstimatedHours, now);
+
+                // 6. Re-check availability inside transaction
                 var isUnavailable = await _dbContext.Bookings.AnyAsync(b =>
                     b.ResourceId == req.ResourceId &&
                     b.BookingStatus != BookingStatus.Cancelled &&
@@ -68,13 +91,13 @@ namespace Application.Services.Coworking.Command
                 if (isUnavailable)
                     throw new ConflictException("This resource is currently occupied.");
 
-                // 5. Generate reference number using PostgreSQL sequence
+                // 7. Generate reference number using PostgreSQL sequence
                 var nextVal = await _dbContext.Database
                     .SqlQuery<long>($"SELECT nextval('booking_ref_seq') AS \"Value\"")
                     .FirstAsync(cancellationToken);
                 var referenceNumber = $"BKG-{nextVal:D4}";
 
-                // 6. Compute SnapshotHourlyRate
+                // 8. Compute SnapshotHourlyRate
                 decimal snapshotHourlyRate;
                 if (package.PackageType == PackageType.Hourly)
                 {
@@ -90,7 +113,6 @@ namespace Application.Services.Coworking.Command
                 }
                 else
                 {
-                    // Meeting room flat package — look up the active Hourly package for same ResourceType
                     var hourlyPackage = await _dbContext.ServicePackages
                         .FirstOrDefaultAsync(p =>
                             p.ResourceType == resource.ResourceType &&
@@ -100,9 +122,9 @@ namespace Application.Services.Coworking.Command
                     snapshotHourlyRate = hourlyPackage?.PriceAmount ?? 0m;
                 }
 
-                // 7. Compute pricing
+                // 9. Compute pricing
                 var baseAmount = package.PackageType == PackageType.Hourly
-                    ? req.EstimatedHours * package.PriceAmount
+                    ? req.EstimatedHours!.Value * package.PriceAmount
                     : package.PriceAmount;
 
                 var discountAmount = req.IsStudent && package.IsStudentEligible
@@ -112,7 +134,12 @@ namespace Application.Services.Coworking.Command
                 var totalAmount   = baseAmount - discountAmount;
                 var balanceAmount = totalAmount;
 
-                // 8. Create BookingGuest
+                // 10. Compute daily rate (only relevant for Daily scheme)
+                decimal? dailyRate = req.PaymentScheme == PaymentScheme.Daily && package.DurationDays.HasValue
+                    ? Math.Round(totalAmount / package.DurationDays.Value, 2)
+                    : null;
+
+                // 11. Create BookingGuest
                 var guest = new BookingGuest
                 {
                     Id                = Guid.NewGuid(),
@@ -125,36 +152,37 @@ namespace Application.Services.Coworking.Command
                     UpdatedAt         = now
                 };
 
-                // 9. Create Booking
+                // 12. Create Booking
                 var booking = new Booking
                 {
-                    Id                   = Guid.NewGuid(),
-                    ReferenceNumber      = referenceNumber,
-                    BookingType          = BookingType.WalkIn,
-                    BookingStatus        = BookingStatus.CheckedIn,
-                    PaymentStatus        = PaymentStatus.Unpaid,
-                    ResourceId           = req.ResourceId,
-                    ServicePackageId     = req.ServicePackageId,
-                    FrontDeskUserId      = command.FrontDeskUserId,
-                    ScheduledStart       = requestedStart,
-                    ScheduledEnd         = requestedEnd,
-                    ActualStart          = requestedStart,
-                    IsStudent            = req.IsStudent,
-                    PaxCount             = 1,
-                    DownpaymentAmount    = 0m,
-                    SnapshotPackageName  = package.Name,
-                    SnapshotPricePerUnit = package.PriceAmount,
-                    SnapshotHourlyRate   = snapshotHourlyRate,
-                    BaseAmount           = baseAmount,
-                    DiscountAmount       = discountAmount,
-                    TotalAmount          = totalAmount,
-                    BalanceAmount        = balanceAmount,
-                    Guest                = guest,
-                    CreatedAt            = now,
-                    UpdatedAt            = now
+                    Id                      = Guid.NewGuid(),
+                    ReferenceNumber         = referenceNumber,
+                    BookingType             = BookingType.WalkIn,
+                    BookingStatus           = BookingStatus.CheckedIn,
+                    PaymentStatus           = PaymentStatus.Unpaid,
+                    ResourceId              = req.ResourceId,
+                    ServicePackageId        = req.ServicePackageId,
+                    FrontDeskUserId         = command.FrontDeskUserId,
+                    ScheduledStart          = requestedStart,
+                    ScheduledEnd            = requestedEnd,
+                    ActualStart             = requestedStart,
+                    IsStudent               = req.IsStudent,
+                    PaxCount                = 1,
+                    DownpaymentAmount       = 0m,
+                    SnapshotPackageName     = package.Name,
+                    SnapshotPricePerUnit    = package.PriceAmount,
+                    SnapshotHourlyRate      = snapshotHourlyRate,
+                    SnapshotPaymentScheme   = req.PaymentScheme,
+                    BaseAmount              = baseAmount,
+                    DiscountAmount          = discountAmount,
+                    TotalAmount             = totalAmount,
+                    BalanceAmount           = balanceAmount,
+                    Guest                   = guest,
+                    CreatedAt               = now,
+                    UpdatedAt               = now
                 };
 
-                // 10. Persist and commit
+                // 13. Persist and commit
                 _dbContext.Bookings.Add(booking);
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 await tx.CommitAsync(cancellationToken);
@@ -168,10 +196,12 @@ namespace Application.Services.Coworking.Command
                     ScheduledStart      = booking.ScheduledStart,
                     ScheduledEnd        = booking.ScheduledEnd,
                     SnapshotPackageName = booking.SnapshotPackageName,
+                    PaymentScheme       = booking.SnapshotPaymentScheme,
                     IsStudent           = booking.IsStudent,
                     BaseAmount          = booking.BaseAmount,
                     DiscountAmount      = booking.DiscountAmount,
-                    TotalAmount         = booking.TotalAmount
+                    TotalAmount         = booking.TotalAmount,
+                    DailyRate           = dailyRate
                 };
             }
             catch
@@ -179,6 +209,31 @@ namespace Application.Services.Coworking.Command
                 await tx.RollbackAsync(cancellationToken);
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Resolves the booking's scheduled end time based on the package type.
+        ///
+        /// Hourly    → now + estimatedHours (open-ended metered billing)
+        /// Fixed hr  → now + DurationHours  (half-day, full-day, day-pass)
+        /// Fixed day → now + DurationDays calendar days (weekly, monthly)
+        /// </summary>
+        private static DateTime ResolveScheduledEnd(
+            Domain.Entity.Coworking.ServicePackage package,
+            decimal? estimatedHours,
+            DateTime now)
+        {
+            if (package.PackageType == PackageType.Hourly)
+                return now.AddHours((double)estimatedHours!.Value);
+
+            if (package.DurationHours.HasValue)
+                return now.AddHours(package.DurationHours.Value);
+
+            if (package.DurationDays.HasValue)
+                return now.AddDays(package.DurationDays.Value);
+
+            // Fallback — should not reach here for well-configured packages
+            return now.AddHours((double)(estimatedHours ?? 1));
         }
     }
 }

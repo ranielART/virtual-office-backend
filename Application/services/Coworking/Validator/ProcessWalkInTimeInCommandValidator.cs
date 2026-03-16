@@ -13,9 +13,14 @@ namespace Application.Services.Coworking.Validator
             RuleFor(x => x.Request.ServicePackageId)
                 .NotEmpty().WithMessage("Service package ID is required.");
 
-            RuleFor(x => x.Request.EstimatedHours)
-                .GreaterThan(0).WithMessage("Estimated hours must be greater than 0.")
-                .LessThanOrEqualTo(24).WithMessage("Estimated hours must not exceed 24.");
+            // Range check when provided. Whether it is required (Hourly) is enforced
+            // in the command handler where the package is already loaded from DB.
+            When(x => x.Request.EstimatedHours.HasValue, () =>
+            {
+                RuleFor(x => x.Request.EstimatedHours)
+                    .GreaterThan(0).WithMessage("Estimated hours must be greater than 0.")
+                    .LessThanOrEqualTo(24).WithMessage("Estimated hours must not exceed 24.");
+            });
 
             RuleFor(x => x.Request.GuestFirstName)
                 .NotEmpty().WithMessage("Guest first name is required.")
@@ -32,6 +37,9 @@ namespace Application.Services.Coworking.Validator
             RuleFor(x => x.Request.GuestEmail)
                 .EmailAddress().WithMessage("Guest email must be a valid email address.")
                 .When(x => !string.IsNullOrWhiteSpace(x.Request.GuestEmail));
+
+            RuleFor(x => x.Request.PaymentScheme)
+                .IsInEnum().WithMessage("Invalid payment scheme.");
         }
     }
 }

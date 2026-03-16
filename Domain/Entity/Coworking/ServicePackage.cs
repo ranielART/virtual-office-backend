@@ -21,6 +21,14 @@ namespace Domain.Entity.Coworking
         // Downpayment percent for online bookings (e.g. 50.00 = 50%)
         public decimal DownpaymentPercent { get; set; } = 50;
 
+        // Payment scheme options — at least one must be true.
+        // FrontDesk picks one of the enabled schemes at time-in.
+        // AllowsUpfront is invalid for Hourly (total unknown at time-in).
+        // AllowsDaily is invalid for non-Monthly packages.
+        public bool AllowsUpfront  { get; set; } = false;
+        public bool AllowsPostpaid { get; set; } = true;
+        public bool AllowsDaily    { get; set; } = false;
+
         public bool IsActive { get; set; } = true;
     }
 }

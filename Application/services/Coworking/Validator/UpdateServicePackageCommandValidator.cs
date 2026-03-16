@@ -79,6 +79,22 @@ namespace Application.Services.Coworking.Validator
                 RuleFor(x => x.Request.DurationDays)
                     .GreaterThan(0).WithMessage("Duration days must be greater than 0.");
             });
+
+            // AllowsUpfront cannot be enabled for Hourly packages
+            When(x => x.Request.AllowsUpfront == true, () =>
+            {
+                RuleFor(x => x.Request.PackageType)
+                    .NotEqual(PackageType.Hourly)
+                    .WithMessage("Hourly packages cannot allow upfront payment — the total is unknown at time-in.");
+            });
+
+            // AllowsDaily can only be enabled for MonthlyDedicatedDesk
+            When(x => x.Request.AllowsDaily == true, () =>
+            {
+                RuleFor(x => x.Request.PackageType)
+                    .Equal(PackageType.MonthlyDedicatedDesk)
+                    .WithMessage("Daily payment scheme is only available for Monthly Dedicated Desk packages.");
+            });
         }
     }
 }

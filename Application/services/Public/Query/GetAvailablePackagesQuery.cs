@@ -53,6 +53,9 @@ namespace Application.Services.Public.Query
                 IsStudentEligible = p.IsStudentEligible,
                 StudentDiscountPercent = p.StudentDiscountPercent,
                 DownpaymentPercent = p.DownpaymentPercent,
+                AllowsUpfront  = p.AllowsUpfront,
+                AllowsPostpaid = p.AllowsPostpaid,
+                AllowsDaily    = p.AllowsDaily,
                 CreatedAt = p.CreatedAt
             }).ToList();
         }
