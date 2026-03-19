@@ -1,7 +1,10 @@
+using Application.Services.Public.Command;
 using Application.Common.Extensions;
+using Application.Services.Public.Request;
 using Application.Services.Public.Query;
 using Domain.Enum;
 using MediatR;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebApi.Controllers
@@ -31,6 +34,14 @@ namespace WebApi.Controllers
 
             var result = await _mediator.Send(new GetAvailablePackagesQuery(parsedResourceType));
             return Ok(result);
+        }
+
+        [HttpPost("contact-us")]
+        [EnableRateLimiting("contact-us")]
+        public async Task<IActionResult> SendEmail([FromBody] SendEmailRequest request)
+        {
+            await _mediator.Send(new SendEmailCommand(request));
+            return Ok(new { message = "Your message has been sent successfully." });
         }
     }
 }

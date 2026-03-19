@@ -37,7 +37,7 @@ namespace DependencyInjection
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidateAudience = true, 
+                    ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = configuration["Jwt:Issuer"] ?? "virtual-office-booking-api",
@@ -104,6 +104,15 @@ namespace DependencyInjection
                 {
                     limiter.PermitLimit = 3;
                     limiter.Window = TimeSpan.FromMinutes(5);
+                    limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    limiter.QueueLimit = 0;
+                });
+
+                // "contact-us": max 5 contact form submissions per IP per hour
+                options.AddFixedWindowLimiter("contact-us", limiter =>
+                {
+                    limiter.PermitLimit = 5;
+                    limiter.Window = TimeSpan.FromHours(1);
                     limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                     limiter.QueueLimit = 0;
                 });
