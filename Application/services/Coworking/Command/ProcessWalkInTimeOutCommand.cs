@@ -40,11 +40,13 @@ namespace Application.Services.Coworking.Command
                 .Include(b => b.Payments)
                 .Include(b => b.Extensions)
                 .Include(b => b.Resource)
+                .Include(b => b.ServicePackage)
                 .FirstOrDefaultAsync(b => b.Id == command.BookingId, cancellationToken)
                 ?? throw new NotFoundException($"Booking '{command.BookingId}' not found.");
 
-            if (booking.BookingStatus != BookingStatus.CheckedIn)
-                throw new ConflictException("Booking is not currently checked in.");
+            if (booking.BookingStatus != BookingStatus.CheckedIn &&
+                booking.BookingStatus != BookingStatus.Overstayed)
+                throw new ConflictException("Booking must be checked in or overstayed to process a time-out.");
 
             // Resolve effective end time
             var effectiveEnd = command.ActualEndOverride?.ToUniversalTime() ?? DateTime.UtcNow;
@@ -85,31 +87,36 @@ namespace Application.Services.Coworking.Command
 
         private static BookingDetailResponse MapToDetail(Domain.Entity.Coworking.Booking b, decimal totalPaid) => new()
         {
-            BookingId           = b.Id,
-            ReferenceNumber     = b.ReferenceNumber,
-            BookingType         = b.BookingType,
-            BookingStatus       = b.BookingStatus,
-            PaymentStatus       = b.PaymentStatus,
-            ResourceName        = b.Resource.Name,
-            GuestName           = b.Guest != null ? $"{b.Guest.FirstName} {b.Guest.LastName}" : string.Empty,
-            GuestPhone          = b.Guest?.Phone ?? string.Empty,
-            GuestEmail          = b.Guest?.Email,
-            IsStudent           = b.IsStudent,
-            IsStudentVerified   = b.Guest?.IsStudentVerified ?? false,
-            ScheduledStart      = b.ScheduledStart,
-            ScheduledEnd        = b.ScheduledEnd,
-            ActualStart         = b.ActualStart,
-            ActualEnd           = b.ActualEnd,
-            SnapshotPackageName = b.SnapshotPackageName,
-            BaseAmount          = b.BaseAmount,
-            DiscountAmount      = b.DiscountAmount,
-            OverstayAmount      = b.OverstayAmount,
-            TotalAmount         = b.TotalAmount,
-            DownpaymentAmount   = b.DownpaymentAmount,
-            BalanceAmount       = b.BalanceAmount,
-            TotalPaid           = totalPaid,
-            OutstandingBalance  = b.BalanceAmount,
-            Notes               = b.Notes,
+            BookingId             = b.Id,
+            ReferenceNumber       = b.ReferenceNumber,
+            BookingType           = b.BookingType,
+            BookingStatus         = b.BookingStatus,
+            PaymentStatus         = b.PaymentStatus,
+            ResourceName          = b.Resource.Name,
+            GuestName             = b.Guest != null ? $"{b.Guest.FirstName} {b.Guest.LastName}" : string.Empty,
+            GuestPhone            = b.Guest?.Phone ?? string.Empty,
+            GuestEmail            = b.Guest?.Email,
+            IsStudent             = b.IsStudent,
+            IsStudentVerified     = b.Guest?.IsStudentVerified ?? false,
+            ScheduledStart        = b.ScheduledStart,
+            ScheduledEnd          = b.ScheduledEnd,
+            ActualStart           = b.ActualStart,
+            ActualEnd             = b.ActualEnd,
+            SnapshotPackageName   = b.SnapshotPackageName,
+            SnapshotPaymentScheme = b.SnapshotPaymentScheme,
+            BaseAmount            = b.BaseAmount,
+            DiscountAmount        = b.DiscountAmount,
+            OverstayAmount        = b.OverstayAmount,
+            TotalAmount           = b.TotalAmount,
+            DownpaymentAmount     = b.DownpaymentAmount,
+            BalanceAmount         = b.BalanceAmount,
+            TotalPaid             = totalPaid,
+            OutstandingBalance    = b.BalanceAmount,
+            DailyRate             = b.SnapshotPaymentScheme == Domain.Enum.PaymentScheme.Daily &&
+                                    b.ServicePackage?.DurationDays > 0
+                                      ? Math.Round(b.TotalAmount / b.ServicePackage.DurationDays!.Value, 2)
+                                      : null,
+            Notes                 = b.Notes,
             Payments            = b.Payments.Select(p => new BookingPaymentResponse
             {
                 PaymentId               = p.Id,

@@ -34,6 +34,7 @@ namespace Application.Services.Coworking.Query
                 .Include(b => b.Payments)
                 .Include(b => b.Extensions)
                 .Include(b => b.Resource)
+                .Include(b => b.ServicePackage)
                 .FirstOrDefaultAsync(b => b.Id == request.BookingId, cancellationToken)
                 ?? throw new NotFoundException($"Booking '{request.BookingId}' not found.");
 
@@ -91,6 +92,10 @@ namespace Application.Services.Coworking.Query
                 BalanceAmount       = booking.BalanceAmount,
                 TotalPaid           = totalPaid,
                 OutstandingBalance  = booking.TotalAmount - totalPaid,
+                DailyRate           = booking.SnapshotPaymentScheme == Domain.Enum.PaymentScheme.Daily &&
+                                      booking.ServicePackage?.DurationDays > 0
+                                        ? Math.Round(booking.TotalAmount / booking.ServicePackage.DurationDays!.Value, 2)
+                                        : null,
                 Notes               = booking.Notes,
                 Payments            = paymentResponses.ToList()
             };
