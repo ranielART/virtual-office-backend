@@ -25,6 +25,7 @@ namespace Persistence.Data
         public DbSet<BookingPayment> BookingPayments => Set<BookingPayment>();
         public DbSet<BookingExtension> BookingExtensions => Set<BookingExtension>();
         public DbSet<Inbox> Inboxes => Set<Inbox>();
+        public DbSet<VirtualOfficeApplication> VirtualOfficeApplications => Set<VirtualOfficeApplication>();
 
         public ApplicationDbContext(DbContextOptions options) : base(options)
         {

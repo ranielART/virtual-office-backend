@@ -1,4 +1,5 @@
 using Application.Common.Interfaces;
+using Application.Common.Models;
 using Azure;
 using Azure.Communication.Email;
 using Microsoft.Extensions.Configuration;
@@ -20,21 +21,27 @@ namespace Infrastructure.Services
 
             var connectionString = _configuration["AzureCommunicationServices:ConnectionString"];
             if (string.IsNullOrEmpty(connectionString))
-            {
                 throw new InvalidOperationException("Azure Communication Services connection string is not configured");
-            }
 
             _emailClient = new EmailClient(connectionString);
             _senderAddress = _configuration["AzureCommunicationServices:SenderAddress"]
                 ?? throw new InvalidOperationException("Sender email address is not configured");
         }
 
-        public async Task SendEmailAsync(string to, string subject, string htmlContent)
+        public async Task SendEmailAsync(
+            string to,
+            string subject,
+            string htmlContent,
+            IReadOnlyList<EmailAttachmentDto>? attachments = null)
         {
-            await SendEmailAsync(new[] { to }, subject, htmlContent);
+            await SendEmailAsync([to], subject, htmlContent, attachments);
         }
 
-        public async Task SendEmailAsync(IEnumerable<string> recipients, string subject, string htmlContent)
+        public async Task SendEmailAsync(
+            IEnumerable<string> recipients,
+            string subject,
+            string htmlContent,
+            IReadOnlyList<EmailAttachmentDto>? attachments = null)
         {
             try
             {
@@ -43,18 +50,29 @@ namespace Infrastructure.Services
                     Html = htmlContent
                 };
 
-                var emailRecipients = new EmailRecipients(recipients.Select(r => new EmailAddress(r)).ToList());
+                var emailRecipients = new EmailRecipients(
+                    recipients.Select(r => new EmailAddress(r)).ToList());
 
-                var emailMessage = new EmailMessage(
-                    senderAddress: _senderAddress,
-                    emailRecipients,
-                    emailContent);
+                var emailMessage = new EmailMessage(_senderAddress, emailRecipients, emailContent);
 
-                EmailSendOperation emailSendOperation = await _emailClient.SendAsync(
-                    WaitUntil.Started,
-                    emailMessage);
+                if (attachments != null)
+                {
+                    foreach (var attachment in attachments)
+                    {
+                        emailMessage.Attachments.Add(new EmailAttachment(
+                            name: attachment.FileName,
+                            contentType: attachment.ContentType,
+                            content: BinaryData.FromBytes(attachment.Content)));
+                    }
+                }
 
-                _logger.LogInformation("Email queued for delivery. Message Id: {MessageId}", emailSendOperation.Id);
+                var operation = await _emailClient.SendAsync(WaitUntil.Started, emailMessage);
+
+                _logger.LogInformation(
+                    "Email queued. MessageId: {MessageId} | Recipients: {Recipients} | Attachments: {AttachmentCount}",
+                    operation.Id,
+                    string.Join(", ", recipients),
+                    attachments?.Count ?? 0);
             }
             catch (RequestFailedException ex)
             {

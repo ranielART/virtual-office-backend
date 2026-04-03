@@ -636,6 +636,107 @@ namespace Persistence.Migrations
                     b.ToTable("service_packages", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entity.Coworking.VirtualOfficeApplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AdminNotes")
+                        .HasColumnType("text")
+                        .HasColumnName("admin_notes");
+
+                    b.Property<string>("BusinessDocumentUrls")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("business_document_urls");
+
+                    b.Property<string>("BusinessType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("business_type");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("city");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("country");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DownPaymentProofUrls")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("down_payment_proof_urls");
+
+                    b.Property<int>("DurationMonths")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_months");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("first_name");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("last_name");
+
+                    b.Property<bool>("NeedsBusinessAddress")
+                        .HasColumnType("boolean")
+                        .HasColumnName("needs_business_address");
+
+                    b.Property<bool>("NeedsOccasionalSpace")
+                        .HasColumnType("boolean")
+                        .HasColumnName("needs_occasional_space");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("phone");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasColumnType("text")
+                        .HasColumnName("reviewed_by_user_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_virtual_office_applications");
+
+                    b.HasIndex("Email")
+                        .HasDatabaseName("ix_virtual_office_applications_email");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_virtual_office_applications_status");
+
+                    b.ToTable("virtual_office_applications", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Entity.Identity.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
