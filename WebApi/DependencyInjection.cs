@@ -117,6 +117,15 @@ namespace DependencyInjection
                     limiter.QueueLimit = 0;
                 });
 
+                // "public-booking": max 3 public booking submissions per IP per hour
+                options.AddFixedWindowLimiter("public-booking", limiter =>
+                {
+                    limiter.PermitLimit = 3;
+                    limiter.Window = TimeSpan.FromHours(1);
+                    limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    limiter.QueueLimit = 0;
+                });
+
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             });
 

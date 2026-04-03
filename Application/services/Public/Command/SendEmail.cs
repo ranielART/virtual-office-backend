@@ -53,16 +53,14 @@ namespace Application.Services.Public.Command
             _dbContext.Set<Inbox>().Add(inboxEntry);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            if (string.IsNullOrWhiteSpace(_coworkingSettings.AdminNotificationEmail))
-            {
-                throw new InvalidOperationException("Admin notification email is not configured.");
-            }
+            if (_coworkingSettings.AdminNotificationEmails.Count == 0)
+                throw new InvalidOperationException("No admin notification emails are configured.");
 
             var adminSubject = $"[Contact Us] {inboxEntry.Subject}";
             var adminHtmlContent = BuildAdminNotificationHtml(inboxEntry);
 
             await _emailService.SendEmailAsync(
-                _coworkingSettings.AdminNotificationEmail,
+                _coworkingSettings.AdminNotificationEmails,
                 adminSubject,
                 adminHtmlContent);
 

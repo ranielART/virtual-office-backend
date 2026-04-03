@@ -31,6 +31,7 @@ namespace Application.Services.Coworking.Response
         public decimal BalanceAmount { get; set; }
         public decimal TotalPaid { get; set; }
         public decimal OutstandingBalance { get; set; }
+        public decimal? DailyRate { get; set; }
         public string? Notes { get; set; }
         public List<BookingPaymentResponse> Payments { get; set; } = [];
     }

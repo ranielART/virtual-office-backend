@@ -63,6 +63,7 @@ namespace Application.Services.Coworking.Query
                 .Where(b => b.ScheduledStart >= periodStart && b.ScheduledStart < periodEnd)
                 .Select(b => new
                 {
+                    b.Id,
                     b.BookingStatus,
                     b.PaymentStatus,
                     b.BookingType,
@@ -76,13 +77,21 @@ namespace Application.Services.Coworking.Query
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
-            // ── Revenue collected in period (based on payment PaidAt) ─────────
+            // ── Revenue collected for period bookings ─────────────────────────
+            // Scoped to payments belonging to bookings that started in the period,
+            // so that "today's revenue" reflects collections for today's bookings
+            // rather than all payments timestamped today (which would bleed in
+            // payments from older bookings processed on this date).
 
-            var revenueCollected = await _dbContext.BookingPayments
-                .Where(p => p.PaidAt >= periodStart && p.PaidAt < periodEnd &&
-                            (p.PaymentValidationStatus == PaymentValidationStatus.NotRequired ||
-                             p.PaymentValidationStatus == PaymentValidationStatus.Validated))
-                .SumAsync(p => (decimal?)p.Amount, cancellationToken) ?? 0m;
+            var periodBookingIds = periodBookings.Select(b => b.Id).ToList();
+
+            var revenueCollected = periodBookingIds.Count == 0 ? 0m :
+                await _dbContext.BookingPayments
+                    .Where(p => periodBookingIds.Contains(p.BookingId) &&
+                                p.PaidAt != null &&
+                                (p.PaymentValidationStatus == PaymentValidationStatus.NotRequired ||
+                                 p.PaymentValidationStatus == PaymentValidationStatus.Validated))
+                    .SumAsync(p => (decimal?)p.Amount, cancellationToken) ?? 0m;
 
             // ── Period stats ──────────────────────────────────────────────────
 
