@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Net;
 using Application.Common.Exceptions;
 using Application.Common.Helpers;
@@ -63,7 +64,7 @@ namespace Application.Services.Public.Command
 
             // 2. Resolve schedule (UTC)
             var scheduledStart = req.Date.ToDateTime(req.StartTime, DateTimeKind.Utc);
-            var scheduledEnd   = ResolveScheduledEnd(package, req.StartTime, req.EndTime, req.Date);
+            var scheduledEnd = ResolveScheduledEnd(package, req.StartTime, req.EndTime, req.Date);
 
             if (scheduledEnd <= scheduledStart)
                 throw new ConflictException("End time must be after start time.");
@@ -100,17 +101,25 @@ namespace Application.Services.Public.Command
             {
                 // Find any available resource of the required type
                 var resource = await _dbContext.CoworkingResources
-                    .Where(r => r.ResourceType == package.ResourceType && r.IsActive)
-                    .Where(r => !_dbContext.Bookings.Any(b =>
-                        b.ResourceId == r.Id &&
-                        b.BookingStatus != BookingStatus.Cancelled &&
-                        b.BookingStatus != BookingStatus.NoShow &&
-                        b.BookingStatus != BookingStatus.CheckedOut &&
-                        b.ScheduledStart < scheduledEnd &&
-                        b.ScheduledEnd   > scheduledStart))
+                    .Where(r => r.Id == req.ResourceId && r.IsActive)
                     .FirstOrDefaultAsync(cancellationToken)
                     ?? throw new ConflictException(
-                        "No resources are available for the selected package and time slot.");
+                        "The selected resource is not available or is inactive.");
+                if (resource.ResourceType != package.ResourceType)
+                    throw new ConflictException(
+                        "The selected resource is not compatible with the chosen service package.");
+
+                // Check for overlapping bookings for this resource
+                var hasOverlap = await _dbContext.Bookings
+                    .AnyAsync(b =>
+                        b.ResourceId == resource.Id &&
+                        b.BookingStatus != BookingStatus.Cancelled &&
+                        b.ScheduledStart < scheduledEnd &&
+                        b.ScheduledEnd > scheduledStart,
+                        cancellationToken);
+
+                if (hasOverlap)
+                    throw new ConflictException("The selected resource is already booked for the specified time range.");
 
                 // Generate reference via booking_ref_seq
                 var nextVal = await _dbContext.Database
@@ -120,41 +129,41 @@ namespace Application.Services.Public.Command
 
                 guest = new BookingGuest
                 {
-                    Id                = Guid.NewGuid(),
-                    FirstName         = req.FirstName.Trim(),
-                    LastName          = req.LastName.Trim(),
-                    Email             = req.Email.Trim(),
-                    Phone             = $"{req.PhoneCountryCode}{req.PhoneNumber}",
+                    Id = Guid.NewGuid(),
+                    FirstName = req.FirstName.Trim(),
+                    LastName = req.LastName.Trim(),
+                    Email = req.Email.Trim(),
+                    Phone = $"{req.PhoneCountryCode}{req.PhoneNumber}",
                     IsStudentVerified = false,
-                    CreatedAt         = DateTime.UtcNow,
-                    UpdatedAt         = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
                 };
 
                 booking = new Booking
                 {
-                    Id                    = Guid.NewGuid(),
-                    ReferenceNumber       = referenceNumber,
-                    BookingType           = BookingType.Online,
-                    BookingStatus         = BookingStatus.Pending,
-                    PaymentStatus         = PaymentStatus.Unpaid,
-                    ResourceId            = resource.Id,
-                    ServicePackageId      = package.Id,
-                    ScheduledStart        = scheduledStart,
-                    ScheduledEnd          = scheduledEnd,
-                    IsStudent             = req.IsStudent,
-                    PaxCount              = 1,
-                    SnapshotPackageName   = package.Name,
-                    SnapshotPricePerUnit  = package.PriceAmount,
-                    SnapshotHourlyRate    = snapshotHourlyRate,
+                    Id = Guid.NewGuid(),
+                    ReferenceNumber = referenceNumber,
+                    BookingType = BookingType.Online,
+                    BookingStatus = BookingStatus.Pending,
+                    PaymentStatus = PaymentStatus.Unpaid,
+                    ResourceId = resource.Id,
+                    ServicePackageId = package.Id,
+                    ScheduledStart = scheduledStart,
+                    ScheduledEnd = scheduledEnd,
+                    IsStudent = req.IsStudent,
+                    PaxCount = 1,
+                    SnapshotPackageName = package.Name,
+                    SnapshotPricePerUnit = package.PriceAmount,
+                    SnapshotHourlyRate = snapshotHourlyRate,
                     SnapshotPaymentScheme = PaymentScheme.Upfront,
-                    BaseAmount            = baseAmount,
-                    DiscountAmount        = discountAmount,
-                    DownpaymentAmount     = 0m,
-                    BalanceAmount         = totalAmount,
-                    TotalAmount           = totalAmount,
-                    Guest                 = guest,
-                    CreatedAt             = DateTime.UtcNow,
-                    UpdatedAt             = DateTime.UtcNow,
+                    BaseAmount = baseAmount,
+                    DiscountAmount = discountAmount,
+                    DownpaymentAmount = 0m,
+                    BalanceAmount = totalAmount,
+                    TotalAmount = totalAmount,
+                    Guest = guest,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
                 };
 
                 _dbContext.Bookings.Add(booking);
@@ -178,22 +187,22 @@ namespace Application.Services.Public.Command
 
                 _dbContext.BookingPayments.Add(new BookingPayment
                 {
-                    Id                      = Guid.NewGuid(),
-                    BookingId               = booking.Id,
-                    Amount                  = Math.Round(paymentAmount, 2),
-                    PaymentMethod           = PaymentMethod.ImageAttachment,
-                    PaymentType             = PaymentType.Downpayment,
+                    Id = Guid.NewGuid(),
+                    BookingId = booking.Id,
+                    Amount = Math.Round(paymentAmount, 2),
+                    PaymentMethod = PaymentMethod.ImageAttachment,
+                    PaymentType = PaymentType.Downpayment,
                     PaymentValidationStatus = PaymentValidationStatus.PendingValidation,
-                    ProofOfPaymentUrl       = url,
-                    CreatedAt               = DateTime.UtcNow,
-                    UpdatedAt               = DateTime.UtcNow,
+                    ProofOfPaymentUrl = url,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
                 });
             }
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             // 7. Send emails with the screenshots attached directly
             var capturedBooking = booking;
-            var capturedGuest   = guest;
+            var capturedGuest = guest;
             _ = Task.Run(async () =>
             {
                 try
@@ -201,16 +210,16 @@ namespace Application.Services.Public.Command
                     var attachments = screenshotFiles
                         .Select(f => new EmailAttachmentDto
                         {
-                            FileName    = f.FileName,
+                            FileName = f.FileName,
                             ContentType = f.ContentType,
-                            Content     = f.Bytes,
+                            Content = f.Bytes,
                         })
                         .ToList();
 
                     await _emailService.SendEmailAsync(
                         _settings.AdminNotificationEmails,
                         $"[Coworking Booking] {capturedBooking.ReferenceNumber} — {capturedGuest.FirstName} {capturedGuest.LastName}",
-                        BuildAdminEmail(capturedBooking, capturedGuest),
+                        BuildAdminEmail(capturedBooking, capturedGuest, _settings.ClientBaseUrl),
                         attachments);
 
                     await _emailService.SendEmailAsync(
@@ -227,14 +236,14 @@ namespace Application.Services.Public.Command
 
             return new SubmitCoworkingBookingResponse
             {
-                BookingId       = booking.Id,
+                BookingId = booking.Id,
                 ReferenceNumber = booking.ReferenceNumber,
-                GuestName       = $"{guest.FirstName} {guest.LastName}",
-                PackageName     = booking.SnapshotPackageName,
-                ScheduledStart  = booking.ScheduledStart,
-                ScheduledEnd    = booking.ScheduledEnd,
-                TotalAmount     = booking.TotalAmount,
-                Message         = "Your booking has been received. We will confirm it once payment has been verified.",
+                GuestName = $"{guest.FirstName} {guest.LastName}",
+                PackageName = booking.SnapshotPackageName,
+                ScheduledStart = booking.ScheduledStart,
+                ScheduledEnd = booking.ScheduledEnd,
+                TotalAmount = booking.TotalAmount,
+                Message = "Your booking has been received. We will confirm it once payment has been verified.",
             };
         }
 
@@ -274,15 +283,18 @@ namespace Application.Services.Public.Command
 
         // ── Email content ────────────────────────────────────────────────────
 
-        private static string BuildAdminEmail(Booking booking, BookingGuest guest)
+        private static string BuildAdminEmail(Booking booking, BookingGuest guest, string clientBaseUrl)
         {
+            var normalizedClientBaseUrl = (clientBaseUrl ?? string.Empty).TrimEnd('/');
+            var bookingId = WebUtility.UrlEncode(booking.Id.ToString());
             var guestName = WebUtility.HtmlEncode($"{guest.FirstName} {guest.LastName}");
-            var email     = WebUtility.HtmlEncode(guest.Email ?? "N/A");
-            var phone     = WebUtility.HtmlEncode(guest.Phone);
-            var package   = WebUtility.HtmlEncode(booking.SnapshotPackageName);
-            var start     = booking.ScheduledStart.ToString("yyyy-MM-dd HH:mm") + " UTC";
-            var end       = booking.ScheduledEnd.ToString("yyyy-MM-dd HH:mm") + " UTC";
-            var amount    = booking.TotalAmount.ToString("N2");
+            var email = WebUtility.HtmlEncode(guest.Email ?? "N/A");
+            var phone = WebUtility.HtmlEncode(guest.Phone);
+            var package = WebUtility.HtmlEncode(booking.SnapshotPackageName);
+            var resource = WebUtility.HtmlEncode(booking.Resource?.Name ?? "N/A");
+            var start = booking.ScheduledStart.ToString("yyyy-MM-dd HH:mm") + " UTC";
+            var end = booking.ScheduledEnd.ToString("yyyy-MM-dd HH:mm") + " UTC";
+            var amount = booking.TotalAmount.ToString("N2");
             var isStudent = booking.IsStudent ? "Yes" : "No";
 
             return $"""
@@ -293,6 +305,7 @@ namespace Application.Services.Public.Command
                 <ul>
                     <li><strong>Reference:</strong> {booking.ReferenceNumber}</li>
                     <li><strong>Package:</strong> {package}</li>
+                    <li><strong>Resource:</strong> {resource}</li>
                     <li><strong>Start (UTC):</strong> {start}</li>
                     <li><strong>End (UTC):</strong> {end}</li>
                     <li><strong>Total Amount:</strong> &#8369;{amount}</li>
@@ -305,16 +318,19 @@ namespace Application.Services.Public.Command
                     <li><strong>Is Student:</strong> {isStudent}</li>
                 </ul>
                 <p>Please log in to the admin dashboard to validate the payment and confirm this booking.</p>
+                <p>Track your bookings here: <a href="{normalizedClientBaseUrl}/my-bookings/{bookingId}">{normalizedClientBaseUrl}/my-bookings/{bookingId}</a></p>
                 """;
+
         }
 
         private static string BuildCustomerEmail(Booking booking, BookingGuest guest)
         {
             var firstName = WebUtility.HtmlEncode(guest.FirstName);
-            var package   = WebUtility.HtmlEncode(booking.SnapshotPackageName);
-            var start     = booking.ScheduledStart.ToString("yyyy-MM-dd HH:mm") + " UTC";
-            var end       = booking.ScheduledEnd.ToString("yyyy-MM-dd HH:mm") + " UTC";
-            var amount    = booking.TotalAmount.ToString("N2");
+            var package = WebUtility.HtmlEncode(booking.SnapshotPackageName);
+            var resource = WebUtility.HtmlEncode(booking.Resource?.Name ?? "N/A");
+            var start = booking.ScheduledStart.ToString("yyyy-MM-dd HH:mm") + " UTC";
+            var end = booking.ScheduledEnd.ToString("yyyy-MM-dd HH:mm") + " UTC";
+            var amount = booking.TotalAmount.ToString("N2");
 
             return $"""
                 <h2>We received your booking!</h2>
@@ -324,6 +340,7 @@ namespace Application.Services.Public.Command
                 <ul>
                     <li><strong>Reference Number:</strong> {booking.ReferenceNumber}</li>
                     <li><strong>Package:</strong> {package}</li>
+                    <li><strong>Resource:</strong> {resource}</li>
                     <li><strong>Start (UTC):</strong> {start}</li>
                     <li><strong>End (UTC):</strong> {end}</li>
                     <li><strong>Total Amount:</strong> &#8369;{amount}</li>

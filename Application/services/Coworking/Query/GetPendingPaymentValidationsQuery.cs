@@ -17,7 +17,7 @@ namespace Application.Services.Coworking.Query
 
         public GetPendingPaymentValidationsQueryHandler(ApplicationDbContext dbContext, IStorageService storageService)
         {
-            _dbContext      = dbContext;
+            _dbContext = dbContext;
             _storageService = storageService;
         }
 
@@ -41,18 +41,18 @@ namespace Application.Services.Coworking.Query
 
                 return new PendingPaymentValidationResponse
                 {
-                    PaymentId         = p.Id,
-                    BookingId         = p.BookingId,
-                    ReferenceNumber   = p.Booking.ReferenceNumber,
-                    GuestName         = p.Booking.Guest != null
+                    PaymentId = p.Id,
+                    BookingId = p.BookingId,
+                    ReferenceNumber = p.Booking.ReferenceNumber,
+                    GuestName = p.Booking.Guest != null
                                         ? $"{p.Booking.Guest.FirstName} {p.Booking.Guest.LastName}"
                                         : string.Empty,
-                    ResourceName      = p.Booking.Resource.Name,
-                    Amount            = p.Amount,
-                    PaymentMethod     = p.PaymentMethod,
-                    PaymentType       = p.PaymentType,
+                    ResourceName = p.Booking.Resource?.Name ?? "N/A",
+                    Amount = p.Amount,
+                    PaymentMethod = p.PaymentMethod,
+                    PaymentType = p.PaymentType,
                     ProofOfPaymentUrl = proofUrl,
-                    CreatedAt         = p.CreatedAt
+                    CreatedAt = p.CreatedAt
                 };
             }));
 

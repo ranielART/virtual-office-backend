@@ -1,4 +1,5 @@
 using Application.Common.Helpers;
+using Application.Common.Extensions;
 using Application.Services.Public.Command;
 using Domain.Enum;
 using FluentValidation;
@@ -39,10 +40,14 @@ namespace Application.Services.Public.Validator
                 .MaximumLength(100);
 
             RuleFor(x => x.Request.BusinessType)
-                .IsInEnum().WithMessage("Business type must be sole_proprietorship, partnership, or corporation.");
+                .Must(value => BusinessTypeExtensions.ParseBusinessType(value).HasValue)
+                .WithMessage("Business type must be sole_proprietorship, partnership, or corporation.");
 
             RuleFor(x => x.Request.DurationMonths)
                 .GreaterThanOrEqualTo(1).WithMessage("Duration must be at least 1 month.");
+
+            RuleFor(x => x.Request.ServicePackage)
+                .NotEmpty().WithMessage("Service package is required.");
 
             // Business documents: max 5 files, up to 10 MB each
             RuleFor(x => x.BusinessDocuments)

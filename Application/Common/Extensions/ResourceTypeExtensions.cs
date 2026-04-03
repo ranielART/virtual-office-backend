@@ -9,10 +9,12 @@ namespace Application.Common.Extensions
             { "coworking_seats", ResourceType.CoworkingSeats },
             { "executive_room", ResourceType.ExecutiveRoom },
             { "collaboration_room", ResourceType.CollaborationRoom },
+            { "virtual_office", ResourceType.VirtualOffice },
             // Also allow the actual enum names
             { "CoworkingSeats", ResourceType.CoworkingSeats },
             { "ExecutiveRoom", ResourceType.ExecutiveRoom },
-            { "CollaborationRoom", ResourceType.CollaborationRoom }
+            { "CollaborationRoom", ResourceType.CollaborationRoom },
+            { "VirtualOffice", ResourceType.VirtualOffice }
         };
 
         public static ResourceType? ParseResourceType(string? value)

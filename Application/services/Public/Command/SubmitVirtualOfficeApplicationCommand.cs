@@ -1,4 +1,6 @@
 using System.Net;
+using Application.Common.Extensions;
+using Application.Common.Exceptions;
 using Application.Common.Helpers;
 using Application.Common.Interfaces;
 using Application.Common.Models;
@@ -9,6 +11,7 @@ using Domain.Entity.Coworking;
 using Domain.Enum;
 using MediatR;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Persistence.Data;
 using Serilog;
@@ -57,9 +60,18 @@ namespace Application.Services.Public.Command
             SubmitVirtualOfficeApplicationCommand command, CancellationToken cancellationToken)
         {
             var req = command.Request;
+            var businessType = BusinessTypeExtensions.ParseBusinessType(req.BusinessType)
+                ?? throw new ConflictException("Business type must be sole_proprietorship, partnership, or corporation.");
+
+            // var package = await _dbContext.ServicePackages
+            //     .FirstOrDefaultAsync(p => p.Id == req.ServicePackageId && p.IsActive, cancellationToken)
+            //     ?? throw new NotFoundException($"Service package '{req.ServicePackageId}' not found or is inactive.");
+
+            // if (package.ResourceType != ResourceType.VirtualOffice)
+            //     throw new ConflictException("The selected service package is not a virtual office package.");
 
             // 1. Read all file bytes up front — streams can only be read once
-            var docFiles   = await ReadFilesAsync(command.BusinessDocuments, cancellationToken);
+            var docFiles = await ReadFilesAsync(command.BusinessDocuments, cancellationToken);
             var proofFiles = await ReadFilesAsync(command.DownPaymentScreenshots, cancellationToken);
 
             var applicationId = Guid.NewGuid();
@@ -91,22 +103,23 @@ namespace Application.Services.Public.Command
 
             var application = new VirtualOfficeApplication
             {
-                Id                   = applicationId,
-                FirstName            = req.FirstName.Trim(),
-                LastName             = req.LastName.Trim(),
-                Email                = req.Email.Trim(),
-                Phone                = $"{req.PhoneCountryCode}{req.PhoneNumber}",
-                City                 = req.City.Trim(),
-                Country              = req.Country.Trim(),
-                BusinessType         = req.BusinessType,
+                Id = applicationId,
+                FirstName = req.FirstName.Trim(),
+                LastName = req.LastName.Trim(),
+                Email = req.Email.Trim(),
+                Phone = $"{req.PhoneCountryCode}{req.PhoneNumber}",
+                City = req.City.Trim(),
+                Country = req.Country.Trim(),
+                BusinessType = businessType,
                 NeedsBusinessAddress = req.NeedsBusinessAddress,
                 NeedsOccasionalSpace = req.NeedsOccasionalSpace,
-                DurationMonths       = req.DurationMonths,
-                Status               = VirtualOfficeApplicationStatus.Pending,
+                DurationMonths = req.DurationMonths,
+                ServicePackage = req.ServicePackage.Trim(),
+                Status = VirtualOfficeApplicationStatus.Pending,
                 BusinessDocumentUrls = docUrls,
                 DownPaymentProofUrls = proofUrls,
-                CreatedAt            = DateTime.UtcNow,
-                UpdatedAt            = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
             };
 
             _dbContext.VirtualOfficeApplications.Add(application);
@@ -124,9 +137,9 @@ namespace Application.Services.Public.Command
                         .Concat(proofFiles)
                         .Select(f => new EmailAttachmentDto
                         {
-                            FileName    = f.FileName,
+                            FileName = f.FileName,
                             ContentType = f.ContentType,
-                            Content     = f.Bytes,
+                            Content = f.Bytes,
                         })
                         .ToList();
 
@@ -151,10 +164,10 @@ namespace Application.Services.Public.Command
 
             return new SubmitVirtualOfficeApplicationResponse
             {
-                ApplicationId   = application.Id,
+                ApplicationId = application.Id,
                 ReferenceNumber = referenceNumber,
-                ApplicantName   = $"{application.FirstName} {application.LastName}",
-                Message         = "Your virtual office application has been received. " +
+                ApplicantName = $"{application.FirstName} {application.LastName}",
+                Message = "Your virtual office application has been received. " +
                                   "Our team will review it and respond within 24 hours.",
             };
         }
@@ -178,14 +191,14 @@ namespace Application.Services.Public.Command
 
         private static string BuildAdminEmail(VirtualOfficeApplication app, string referenceNumber)
         {
-            var name         = WebUtility.HtmlEncode($"{app.FirstName} {app.LastName}");
-            var email        = WebUtility.HtmlEncode(app.Email);
-            var phone        = WebUtility.HtmlEncode(app.Phone);
-            var city         = WebUtility.HtmlEncode(app.City);
-            var country      = WebUtility.HtmlEncode(app.Country);
+            var name = WebUtility.HtmlEncode($"{app.FirstName} {app.LastName}");
+            var email = WebUtility.HtmlEncode(app.Email);
+            var phone = WebUtility.HtmlEncode(app.Phone);
+            var city = WebUtility.HtmlEncode(app.City);
+            var country = WebUtility.HtmlEncode(app.Country);
             var businessType = WebUtility.HtmlEncode(app.BusinessType.ToString());
-            var bizAddress   = app.NeedsBusinessAddress ? "Yes" : "No";
-            var occ          = app.NeedsOccasionalSpace ? "Yes" : "No";
+            var bizAddress = app.NeedsBusinessAddress ? "Yes" : "No";
+            var occ = app.NeedsOccasionalSpace ? "Yes" : "No";
 
             return $"""
                 <h2>New Virtual Office Application</h2>

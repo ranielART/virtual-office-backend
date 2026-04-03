@@ -1,5 +1,3 @@
-using Domain.Enum;
-
 namespace Application.Services.Public.Request
 {
     /// <summary>
@@ -22,7 +20,7 @@ namespace Application.Services.Public.Request
         public string City { get; set; } = string.Empty;
         public string Country { get; set; } = string.Empty;
 
-        public BusinessType BusinessType { get; set; }
+        public string BusinessType { get; set; } = string.Empty;
 
         /// <summary>True if applicant needs a registered business address for permits.</summary>
         public bool NeedsBusinessAddress { get; set; }
@@ -32,5 +30,7 @@ namespace Application.Services.Public.Request
 
         /// <summary>Desired virtual office subscription duration in months. Minimum: 1.</summary>
         public int DurationMonths { get; set; }
+
+        public string ServicePackage { get; set; } = string.Empty;
     }
 }

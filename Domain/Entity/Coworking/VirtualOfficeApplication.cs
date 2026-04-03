@@ -15,6 +15,9 @@ namespace Domain.Entity.Coworking
         public bool NeedsBusinessAddress { get; set; }
         public bool NeedsOccasionalSpace { get; set; }
         public int DurationMonths { get; set; }
+        public string? ServicePackage { get; set; }
+        // public Guid? ServicePackageId { get; set; }
+        // public ServicePackage? ServicePackageEntity { get; set; }
         public VirtualOfficeApplicationStatus Status { get; set; } = VirtualOfficeApplicationStatus.Pending;
 
         // JSON arrays of Azure Blob absolute URLs

@@ -1,5 +1,6 @@
 using Application.Services.Public.Command;
 using Application.Services.Public.Request;
+using Application.Services.Coworking.Query;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -46,6 +47,17 @@ namespace WebApi.Controllers
                     request,
                     businessDocuments ?? [],
                     downPaymentScreenshots ?? []), ct);
+            return Ok(result);
+        }
+
+        [HttpGet("booking-details/{bookingId}")]
+        // [EnableRateLimiting("public-booking")]
+        public async Task<IActionResult> GetCoworkingBooking(
+            [FromRoute] Guid bookingId,
+            CancellationToken ct)
+        {
+            var result = await _mediator.Send(
+                new GetCoworkingBookingQuery(bookingId), ct);
             return Ok(result);
         }
     }

@@ -11,7 +11,7 @@ namespace Application.Services.Public.Request
     {
         /// <summary>ID of the chosen service package (from GET /api/public/packages).</summary>
         public Guid ServicePackageId { get; set; }
-
+        public Guid ResourceId { get; set; }
         /// <summary>Desired booking date in UTC. Format: YYYY-MM-DD.</summary>
         public DateOnly Date { get; set; }
 

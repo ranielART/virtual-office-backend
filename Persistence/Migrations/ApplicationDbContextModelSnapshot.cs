@@ -716,6 +716,10 @@ namespace Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("reviewed_by_user_id");
 
+                    b.Property<string>("ServicePackage")
+                        .HasColumnType("text")
+                        .HasColumnName("service_package");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
@@ -730,6 +734,9 @@ namespace Persistence.Migrations
 
                     b.HasIndex("Email")
                         .HasDatabaseName("ix_virtual_office_applications_email");
+
+                    b.HasIndex("ServicePackage")
+                        .HasDatabaseName("ix_virtual_office_applications_service_package");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_virtual_office_applications_status");

@@ -42,8 +42,14 @@ namespace Persistence.Configurations
                 .HasColumnType("jsonb")
                 .Metadata.SetValueComparer(_listComparer);
 
+            // builder.HasOne(v => v.ServicePackageEntity)
+            //     .WithMany()
+            //     .HasForeignKey(v => v.ServicePackageId)
+            //     .OnDelete(DeleteBehavior.Restrict);
+
             builder.HasIndex(v => v.Email);
             builder.HasIndex(v => v.Status);
+            builder.HasIndex(v => v.ServicePackage);
         }
     }
 }
