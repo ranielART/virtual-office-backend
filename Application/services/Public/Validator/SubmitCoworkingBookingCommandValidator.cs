@@ -7,10 +7,26 @@ namespace Application.Services.Public.Validator
     public class SubmitCoworkingBookingCommandValidator
         : AbstractValidator<SubmitCoworkingBookingCommand>
     {
+        private static readonly HashSet<string> ValidResourcePackages =
+        [
+            "Coworking Seat: Hourly Pass",
+            "Coworking Seat: Day Pass",
+            "Coworking Seat: Weekly Pass",
+            "Coworking Seat: Monthly Dedicated Desk",
+            "Executive Meeting Room: Hourly",
+            "Executive Meeting Room: Half-Day (5 hrs)",
+            "Executive Meeting Room: Full Day (8 hrs)",
+            "Collaboration Room: Hourly",
+            "Collaboration Room: Half-Day (4 hrs)",
+            "Collaboration Room: Full Day (8 hrs)",
+        ];
+
         public SubmitCoworkingBookingCommandValidator()
         {
-            RuleFor(x => x.Request.ServicePackageId)
-                .NotEmpty().WithMessage("Service package is required.");
+            RuleFor(x => x.Request.ResourcePackage)
+                .NotEmpty().WithMessage("Resource package selection is required.")
+                .Must(v => ValidResourcePackages.Contains(v))
+                .WithMessage("The selected package does not exist. Please select a valid package.");
 
             RuleFor(x => x.Request.Date)
                 .Must(d => d >= DateOnly.FromDateTime(DateTime.UtcNow))
@@ -18,6 +34,29 @@ namespace Application.Services.Public.Validator
 
             RuleFor(x => x.Request.StartTime)
                 .NotEqual(default(TimeOnly)).WithMessage("Start time is required.");
+
+            // EndTime is required for hourly packages
+            RuleFor(x => x.Request.EndTime)
+                .NotNull().WithMessage("End time is required for hourly packages.")
+                .When(x => PriceCalculator.IsHourlyCoworkingPackage(x.Request.ResourcePackage));
+
+            // EndTime must be after StartTime when provided
+            RuleFor(x => x)
+                .Must(x => !x.Request.EndTime.HasValue || x.Request.EndTime.Value > x.Request.StartTime)
+                .WithMessage("End time must be after start time.")
+                .When(x => x.Request.EndTime.HasValue);
+
+            // Hourly duration must not exceed 24 hours
+            RuleFor(x => x)
+                .Must(x =>
+                {
+                    if (!x.Request.EndTime.HasValue) return true;
+                    var hours = (x.Request.EndTime.Value - x.Request.StartTime).TotalHours;
+                    return hours > 0 && hours <= 24;
+                })
+                .WithMessage("Booking duration must be between 0 and 24 hours.")
+                .When(x => PriceCalculator.IsHourlyCoworkingPackage(x.Request.ResourcePackage)
+                            && x.Request.EndTime.HasValue);
 
             RuleFor(x => x.Request.FirstName)
                 .NotEmpty().WithMessage("First name is required.")

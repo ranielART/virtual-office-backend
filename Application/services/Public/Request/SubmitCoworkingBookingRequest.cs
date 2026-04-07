@@ -1,27 +1,29 @@
 namespace Application.Services.Public.Request
 {
     /// <summary>
-    /// Multipart/form-data request for a public online coworking booking.
-    ///
-    /// Date and times are expected in UTC.
+    /// Multipart/form-data request for a public online coworking booking inquiry.
+    /// Pricing is computed server-side from ResourcePackage — no ServicePackageId needed.
     /// Files (payment_screenshots) are read separately from Request.Form.Files
     /// in the controller and passed into the command directly.
     /// </summary>
     public class SubmitCoworkingBookingRequest
     {
-        /// <summary>ID of the chosen service package (from GET /api/public/packages).</summary>
-        public Guid ServicePackageId { get; set; }
-        public Guid ResourceId { get; set; }
-        /// <summary>Desired booking date in UTC. Format: YYYY-MM-DD.</summary>
+        /// <summary>
+        /// Human-readable package label hardcoded on the frontend.
+        /// e.g. "Coworking Seat: Hourly Pass", "Executive Meeting Room: Half-Day (5 hrs)"
+        /// Must exactly match one of the published rate sheet values.
+        /// </summary>
+        public string ResourcePackage { get; set; } = string.Empty;
+
+        /// <summary>Desired booking date. Format: YYYY-MM-DD.</summary>
         public DateOnly Date { get; set; }
 
-        /// <summary>Booking start time in UTC. Format: HH:mm.</summary>
+        /// <summary>Booking start time (local). Format: HH:mm.</summary>
         public TimeOnly StartTime { get; set; }
 
         /// <summary>
-        /// Booking end time in UTC. Format: HH:mm.
-        /// Required for Hourly packages. Ignored for fixed-duration packages
-        /// (ScheduledEnd is derived from the package's DurationHours).
+        /// Booking end time (local). Required for Hourly packages — used to compute hours billed.
+        /// Ignored for flat-rate packages (Day Pass, Half-Day, Full Day, Weekly, Monthly).
         /// </summary>
         public TimeOnly? EndTime { get; set; }
 
@@ -35,6 +37,12 @@ namespace Application.Services.Public.Request
         /// <summary>E.g. "9123456789"</summary>
         public string PhoneNumber { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Whether the guest is a student. Affects pricing for eligible packages:
+        /// Coworking Seat Hourly → ₱40/hr (instead of ₱50/hr)
+        /// Coworking Seat Day Pass / Weekly Pass / Monthly Desk → 10% discount
+        /// Meeting and Collaboration rooms → no student discount.
+        /// </summary>
         public bool IsStudent { get; set; }
     }
 }

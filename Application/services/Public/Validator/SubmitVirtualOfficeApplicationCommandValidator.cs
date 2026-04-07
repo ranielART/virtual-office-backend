@@ -9,6 +9,13 @@ namespace Application.Services.Public.Validator
     public class SubmitVirtualOfficeApplicationCommandValidator
         : AbstractValidator<SubmitVirtualOfficeApplicationCommand>
     {
+        private static readonly HashSet<string> ValidServicePackages =
+        [
+            "Virtual Office: Basic",
+            "Virtual Office: Standard",
+            "Virtual Office: Premium",
+        ];
+
         public SubmitVirtualOfficeApplicationCommandValidator()
         {
             RuleFor(x => x.Request.FirstName)
@@ -47,7 +54,9 @@ namespace Application.Services.Public.Validator
                 .GreaterThanOrEqualTo(1).WithMessage("Duration must be at least 1 month.");
 
             RuleFor(x => x.Request.ServicePackage)
-                .NotEmpty().WithMessage("Service package is required.");
+                .NotEmpty().WithMessage("Service package is required.")
+                .Must(v => ValidServicePackages.Contains(v))
+                .WithMessage("The selected package does not exist. Please select a valid package.");
 
             // Business documents: max 5 files, up to 10 MB each
             RuleFor(x => x.BusinessDocuments)

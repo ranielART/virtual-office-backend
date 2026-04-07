@@ -11,5 +11,11 @@ namespace Application.Common.Settings
         /// Add as many as needed in appsettings.json under CoworkingSettings:AdminNotificationEmails.
         /// </summary>
         public List<string> AdminNotificationEmails { get; set; } = [];
+
+        /// <summary>
+        /// Absolute URL to the brand logo used in email templates.
+        /// Example: https://your-api.com/images/communside-logo.png
+        /// </summary>
+        public string LogoUrl { get; set; } = string.Empty;
     }
 }
