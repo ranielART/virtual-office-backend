@@ -102,6 +102,39 @@ namespace Application.Services.Public.Validator
                         })
                         .WithMessage("File content does not match the declared file type.");
                 });
+
+            // Student ID screenshots — must not be submitted when IsStudent is false
+            RuleFor(x => x.StudentIdScreenshots)
+                .Must(f => f == null || f.Count == 0)
+                .WithMessage("Student ID screenshots cannot be submitted unless the student option is selected.")
+                .When(x => !x.Request.IsStudent);
+
+            // Student ID screenshots — required when IsStudent is true
+            RuleFor(x => x.StudentIdScreenshots)
+                .NotEmpty().WithMessage("At least one student ID screenshot is required for student pricing.")
+                .Must(f => f.Count <= 2).WithMessage("Maximum 2 student ID screenshots are allowed.")
+                .When(x => x.Request.IsStudent);
+
+            RuleForEach(x => x.StudentIdScreenshots)
+                .ChildRules(file =>
+                {
+                    file.RuleFor(f => f.Length)
+                        .LessThanOrEqualTo(5 * 1024 * 1024)
+                        .WithMessage("Each student ID screenshot must not exceed 5 MB.");
+
+                    file.RuleFor(f => f.ContentType)
+                        .Must(ct => FileSecurityHelper.AllowedImageContentTypes.Contains(ct))
+                        .WithMessage("Only JPEG, PNG, and WebP images are accepted for student ID.");
+
+                    file.RuleFor(f => f)
+                        .Must(f =>
+                        {
+                            using var stream = f.OpenReadStream();
+                            return FileSecurityHelper.VerifyMagicBytes(stream, f.ContentType);
+                        })
+                        .WithMessage("Student ID file content does not match the declared file type.");
+                })
+                .When(x => x.Request.IsStudent);
         }
     }
 }

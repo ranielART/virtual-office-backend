@@ -25,10 +25,11 @@ namespace WebApi.Controllers
         public async Task<IActionResult> SubmitCoworkingBooking(
             [FromForm] SubmitCoworkingBookingRequest request,
             [FromForm(Name = "payment_screenshots")] List<IFormFile>? paymentScreenshots,
+            [FromForm(Name = "student_id_screenshots")] List<IFormFile>? studentIdScreenshots,
             CancellationToken ct)
         {
             var result = await _mediator.Send(
-                new SubmitCoworkingBookingCommand(request, paymentScreenshots ?? []), ct);
+                new SubmitCoworkingBookingCommand(request, paymentScreenshots ?? [], studentIdScreenshots ?? []), ct);
             return Ok(result);
         }
 

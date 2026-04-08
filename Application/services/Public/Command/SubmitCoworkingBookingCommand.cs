@@ -17,13 +17,16 @@ namespace Application.Services.Public.Command
     {
         public SubmitCoworkingBookingRequest Request { get; }
         public IReadOnlyList<IFormFile> PaymentScreenshots { get; }
+        public IReadOnlyList<IFormFile> StudentIdScreenshots { get; }
 
         public SubmitCoworkingBookingCommand(
             SubmitCoworkingBookingRequest request,
-            IReadOnlyList<IFormFile> paymentScreenshots)
+            IReadOnlyList<IFormFile> paymentScreenshots,
+            IReadOnlyList<IFormFile> studentIdScreenshots)
         {
             Request = request;
             PaymentScreenshots = paymentScreenshots;
+            StudentIdScreenshots = studentIdScreenshots;
         }
     }
 
@@ -72,7 +75,8 @@ namespace Application.Services.Public.Command
             var referenceNumber  = $"BKG-{DateTime.UtcNow:yyyyMMdd}-{inquiryId.ToString("N")[..8].ToUpper()}";
 
             // 4. Read all file bytes up front — streams can only be read once
-            var screenshotFiles = await ReadFilesAsync(command.PaymentScreenshots, cancellationToken);
+            var screenshotFiles   = await ReadFilesAsync(command.PaymentScreenshots, cancellationToken);
+            var studentIdFiles    = await ReadFilesAsync(command.StudentIdScreenshots, cancellationToken);
 
             // 5. Upload screenshots to blob (for admin record-keeping)
             var proofUrls = new List<string>();
@@ -85,14 +89,23 @@ namespace Application.Services.Public.Command
                 proofUrls.Add(url);
             }
 
+            foreach (var file in studentIdFiles)
+            {
+                var key = FileSecurityHelper.BuildStorageKey(
+                    $"coworking-inquiries/{inquiryId}/student-ids", file.FileName);
+                await _storageService.UploadFileAsync(
+                    key, new MemoryStream(file.Bytes), file.ContentType);
+            }
+
             // 6. Send emails — fire-and-forget
             var guestName               = $"{req.FirstName.Trim()} {req.LastName.Trim()}";
             var capturedScreenshotNames = screenshotFiles.Select(f => f.FileName).ToList();
+            var capturedStudentIdNames  = studentIdFiles.Select(f => f.FileName).ToList();
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    var attachments = screenshotFiles
+                    var paymentAttachments = screenshotFiles
                         .Select(f => new EmailAttachmentDto
                         {
                             FileName    = f.FileName,
@@ -101,17 +114,28 @@ namespace Application.Services.Public.Command
                         })
                         .ToList();
 
+                    var studentIdAttachments = studentIdFiles
+                        .Select(f => new EmailAttachmentDto
+                        {
+                            FileName    = f.FileName,
+                            ContentType = f.ContentType,
+                            Content     = f.Bytes,
+                        })
+                        .ToList();
+
+                    var allAttachments = paymentAttachments.Concat(studentIdAttachments).ToList();
+
                     await _emailService.SendEmailAsync(
                         _settings.AdminNotificationEmails,
                         $"[New Booking] {req.ResourcePackage} — {guestName}",
                         BuildAdminEmail(req, referenceNumber, guestName, price),
-                        attachments);
+                        allAttachments);
 
                     await _emailService.SendEmailAsync(
                         req.Email.Trim(),
                         $"Your Booking Inquiry Has Been Received (Ref: {referenceNumber})",
-                        BuildCustomerEmail(req, referenceNumber, guestName, price, capturedScreenshotNames),
-                        attachments);
+                        BuildCustomerEmail(req, referenceNumber, guestName, price, capturedScreenshotNames, capturedStudentIdNames),
+                        allAttachments);
                 }
                 catch (Exception ex)
                 {
@@ -355,7 +379,8 @@ namespace Application.Services.Public.Command
             string referenceNumber,
             string guestName,
             PriceCalculator.CoworkingPriceResult price,
-            List<string> screenshotFileNames)
+            List<string> screenshotFileNames,
+            List<string> studentIdFileNames)
         {
             var firstName = WebUtility.HtmlEncode(req.FirstName.Trim());
             var rp        = WebUtility.HtmlEncode(req.ResourcePackage);
@@ -395,6 +420,17 @@ namespace Application.Services.Public.Command
 
             var screenshotRows = string.Join("", screenshotFileNames.Select(fn =>
                 $"<tr><td colspan=\"2\" style=\"padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#555555;font-family:Arial,sans-serif;\">&#128247;&nbsp; {WebUtility.HtmlEncode(fn)}</td></tr>"));
+
+            var studentIdSection = studentIdFileNames.Count > 0
+                ? $"""
+                              <!-- Student ID Screenshots -->
+                              <p style="margin:24px 0 10px;font-family:'Righteous',Arial,sans-serif;color:#0C008A;font-size:12px;letter-spacing:2px;text-transform:uppercase;border-bottom:2px solid #FF7700;padding-bottom:6px;">Student ID You Submitted</p>
+                              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                {string.Join("", studentIdFileNames.Select(fn =>
+                                    $"<tr><td colspan=\"2\" style=\"padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#555555;font-family:Arial,sans-serif;\">&#127891;&nbsp; {WebUtility.HtmlEncode(fn)}</td></tr>"))}
+                              </table>
+                  """
+                : string.Empty;
 
             return $$"""
                 <!DOCTYPE html>
@@ -490,6 +526,8 @@ namespace Application.Services.Public.Command
                               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                                 {{screenshotRows}}
                               </table>
+
+                              {{studentIdSection}}
 
                               <!-- Divider -->
                               <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0;">
