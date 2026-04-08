@@ -526,7 +526,7 @@ namespace Application.Services.Public.Command
                                 &#9989;&nbsp; Application submitted successfully<br />
                                 &#9203;&nbsp; Our team is reviewing your documents<br />
                                 &#128231;&nbsp; Approval decision within 24 business hours<br />
-                                &#128274;&nbsp; Dashboard credentials sent upon approval
+                               
                               </p>
 
                               <!-- Contact Box -->
