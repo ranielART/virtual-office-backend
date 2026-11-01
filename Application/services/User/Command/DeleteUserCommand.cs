@@ -26,11 +26,9 @@ namespace Application.Services.User.Command
             if (user == null)
                 throw new KeyNotFoundException($"User with ID {command.Id} not found.");
 
-            // 1. Soft Delete (Using the IsActive field you added)
-            // If you are using the Status enum, use: user.Status = Domain.Enum.RegistrationStatus.Deactivated;
+            
             user.IsActive = false;
 
-            // 2. Security: Lock them out immediately
             // This ensures they cannot log in again even if they have a valid password
             await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
 

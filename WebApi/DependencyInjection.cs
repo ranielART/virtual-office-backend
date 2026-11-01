@@ -1,10 +1,15 @@
 ﻿
+using Application.Common.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
 using System.Text;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using WebApi.Infrastructure;
+
 namespace DependencyInjection
 {
     public static class DependencyInjection
@@ -12,7 +17,10 @@ namespace DependencyInjection
 
         public static IServiceCollection AddWebApi(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddControllers();
+            services.AddControllers()
+                .AddJsonOptions(options =>
+                    options.JsonSerializerOptions.Converters.Add(
+                        new JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.SnakeCaseLower)));
             services.AddEndpointsApiExplorer();
 
 
@@ -29,7 +37,7 @@ namespace DependencyInjection
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidateAudience = true, 
+                    ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = configuration["Jwt:Issuer"] ?? "virtual-office-booking-api",
@@ -78,6 +86,51 @@ namespace DependencyInjection
                     }
                 });
             });
+
+            // Rate limiting — applied to public booking and email-verification endpoints
+            services.AddRateLimiter(options =>
+            {
+                // "booking": max 10 booking submissions per IP per minute
+                options.AddFixedWindowLimiter("booking", limiter =>
+                {
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    limiter.QueueLimit = 0;
+                });
+
+                // "email-verification": max 3 OTP requests per IP per 5 minutes
+                options.AddFixedWindowLimiter("email-verification", limiter =>
+                {
+                    limiter.PermitLimit = 3;
+                    limiter.Window = TimeSpan.FromMinutes(5);
+                    limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    limiter.QueueLimit = 0;
+                });
+
+                // "contact-us": max 5 contact form submissions per IP per hour
+                options.AddFixedWindowLimiter("contact-us", limiter =>
+                {
+                    limiter.PermitLimit = 5;
+                    limiter.Window = TimeSpan.FromHours(1);
+                    limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    limiter.QueueLimit = 0;
+                });
+
+                // "public-booking": max 3 public booking submissions per IP per hour
+                options.AddFixedWindowLimiter("public-booking", limiter =>
+                {
+                    limiter.PermitLimit = 3;
+                    limiter.Window = TimeSpan.FromHours(1);
+                    limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    limiter.QueueLimit = 0;
+                });
+
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            });
+
+            // Coworking module settings
+            services.Configure<CoworkingSettings>(configuration.GetSection("CoworkingSettings"));
 
             services.AddCors(options =>
             {

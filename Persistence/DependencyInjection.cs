@@ -20,6 +20,7 @@ namespace Persistence
             );
 
             services.AddScoped<IDataSeeder, DataSeeder>();
+            services.AddScoped<CoworkingSeeder>();
 
             return services;
         }

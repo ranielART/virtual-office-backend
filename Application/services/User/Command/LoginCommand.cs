@@ -54,9 +54,7 @@ namespace Application.Services.User.Command
             }
 
             var roles = await _userManager.GetRolesAsync(user);
-
-            // 2. Your TokenService needs a SINGLE string (for now).
-            // So we grab the first one. 
+ 
             string userRole = roles.FirstOrDefault() ?? "Customer";
             // Generate access token
             var accessToken = _tokenService.GenerateAccessToken(user, userRole);
@@ -74,10 +72,10 @@ namespace Application.Services.User.Command
 
             return new LoginResponse
             {
-                UserId = user.Id,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
+                //UserId = user.Id,
+                //Email = user.Email!,
+                //FirstName = user.FirstName,
+                //LastName = user.LastName,
                 AccessToken = accessToken,
                 RefreshToken = refreshToken.Token
             };
