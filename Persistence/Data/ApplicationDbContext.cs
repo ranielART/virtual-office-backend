@@ -1,16 +1,32 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+using Domain.Entity.Identity;
+using Domain.Entity.Coworking;
+using Microsoft.AspNetCore.Identity;
 
 namespace Persistence.Data
 {
-    public class ApplicationDbContext : IdentityDbContext
+    public class ApplicationDbContext : IdentityDbContext<
+        User,
+        Role,
+        string,
+        IdentityUserClaim<string>,
+        UserRole,
+        IdentityUserLogin<string>,
+        IdentityRoleClaim<string>,
+        IdentityUserToken<string>
+    >
     {
+        public DbSet<CoworkingResource> CoworkingResources => Set<CoworkingResource>();
+        public DbSet<ServicePackage> ServicePackages => Set<ServicePackage>();
+        public DbSet<Booking> Bookings => Set<Booking>();
+        public DbSet<BookingGuest> BookingGuests => Set<BookingGuest>();
+        public DbSet<BookingPayment> BookingPayments => Set<BookingPayment>();
+        public DbSet<BookingExtension> BookingExtensions => Set<BookingExtension>();
+        public DbSet<Inbox> Inboxes => Set<Inbox>();
+        public DbSet<VirtualOfficeApplication> VirtualOfficeApplications => Set<VirtualOfficeApplication>();
+
         public ApplicationDbContext(DbContextOptions options) : base(options)
         {
         }

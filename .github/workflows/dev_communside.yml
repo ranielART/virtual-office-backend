@@ -1,0 +1,77 @@
+name: Build and deploy ASP.Net Core app to Azure Web App - communside
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+env:
+  ASPNETCORE_ENVIRONMENT: ${{ secrets.ASPNETCORE_ENVIRONMENT}}
+  DB_HOST: ${{ secrets.DB_HOST}}
+  DB_PORT: ${{ secrets.DB_PORT}}
+  DB_NAME: ${{ secrets.DB_NAME}}
+  DB_USER: ${{ secrets.DB_USER}}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD}}
+  JWT_SECRET: ${{ secrets.JWT_SECRET}}
+  JWT_EXPIRY_MINUTES: ${{ secrets.JWT_EXPIRY_MINUTES}}
+  JWT_REFRESH_TOKEN_EXPIRY_DAYS: ${{ secrets.JWT_REFRESH_TOKEN_EXPIRY_DAYS}}
+  AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING}}
+  AZURE_STORAGE_CONTAINER_NAME: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME}}
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build with dotnet
+        run: dotnet build --configuration Release --no-restore
+
+      - name: dotnet publish
+        run: dotnet publish WebApi/WebApi.csproj -c Release -o ./publish
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: .net-app
+          path: ./publish
+
+  deploy:
+    runs-on: windows-latest
+    needs: build
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: .net-app
+      
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_FEF0FC32B802404AAD828D8B8DCD2514 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_AE479E4B621341DA91C057D60FFE5C08 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_CA73AED6D9A844D69A5DD215FEF95804 }}
+
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'communside'
+          slot-name: 'Production'
+          package: .
+
